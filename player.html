@@ -370,6 +370,43 @@ body::after { opacity:.10; }
   .role-box, .dm-message-box { margin-left:2px; margin-right:2px; }
 }
 
+/* ---------- 大厅提示条 ---------- */
+.lobby-msg { margin:4px 2px 10px; padding:7px 10px; border-radius:8px; font-size:12px; line-height:1.5;
+  background: rgba(255,255,255,.92); border:1px solid rgba(94,78,58,.25); color:#5f5766; }
+.lobby-msg.ok { border-color: rgba(46,125,91,.45); color:#2e7d5b; }
+.lobby-msg.err { border-color: rgba(176,58,58,.45); color:#b03a3a; }
+.lobby-msg.hidden { display:none; }
+.tip.wait { color:#a87c14; border-color: rgba(168,124,20,.4); background: rgba(255,248,230,.9); }
+
+/* ---------- 复盘：全部角色 ---------- */
+.reveal-box { margin:10px 2px 14px; padding:12px 12px 10px; border-radius:12px;
+  background: rgba(255,255,255,.97); border:1px solid rgba(184,134,11,.5);
+  box-shadow: 0 10px 26px rgba(70,50,25,.16); }
+.rv-head { font-size:13px; font-weight:700; color:#96700f; letter-spacing:1px; margin-bottom:9px; }
+.rv-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap:6px; }
+.rv-item { display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:8px;
+  background: rgba(246,241,230,.92); border:1px solid rgba(94,78,58,.16); font-size:12px; }
+.rv-item.mine { border-color: rgba(184,134,11,.65); box-shadow: inset 0 0 0 1px rgba(184,134,11,.3); background:#fffdf6; }
+.rv-item.dead { opacity:.6; }
+.rv-seat { font-size:10px; color:#8d8578; min-width:13px; }
+.rv-name { font-weight:600; max-width:66px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rv-role { display:inline-flex; align-items:center; gap:3px; font-weight:700; }
+.rv-role .role-ic { width:14px; height:14px; }
+.rv-fake { font-size:10px; color:#7d4bb0; }
+.rv-dead { font-size:10px; color:#b03a3a; margin-left:auto; }
+
+/* ---------- 白天 / 夜晚 色调 ---------- */
+html[data-phase="day"] body {
+  background:
+    linear-gradient(rgba(255,228,180,.30), rgba(255,208,145,.44)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+html[data-phase="night"] body {
+  background:
+    linear-gradient(rgba(10,8,14,.14), rgba(10,8,14,.32)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+
 </style>
 </head>
 <body>
@@ -402,12 +439,17 @@ body::after { opacity:.10; }
         <button id="btnLeave" style="font-size:12px;padding:4px 8px;">退出</button>
       </div>
     </div>
+    <div id="lobbyMsg" class="lobby-msg hidden"></div>
     <div class="stage-wrap">
       <div class="stage" id="stage"></div>
     </div>
     <div class="role-box">
       <div class="role-name" id="myRoleName">—</div>
       <div class="role-ability" id="myRoleAbility"></div>
+    </div>
+    <div id="revealBox" class="reveal-box hidden">
+      <div class="rv-head">🎭 复盘 · 全部角色</div>
+      <div class="rv-list" id="revealList"></div>
     </div>
     <div id="nightInfo" class="night-info"></div>
     <div id="dmMessagesBox" class="dm-message-box hidden">
@@ -429,6 +471,7 @@ body::after { opacity:.10; }
   let myRoleId = null;
   let publicState = { currentNight: 1, phase: 'night', players: [] };
   let myMessages = [];
+  let gameReveal = null;   // 复盘数据（DM 公布的所有角色）
   let submittedThisNight = false;
   let lastActionTs = 0;
   let loggedIn = false;
@@ -469,6 +512,7 @@ body::after { opacity:.10; }
       document.getElementById('playBox').classList.remove('hidden');
       document.getElementById('mySeatLabel').textContent = mySeatId;
       document.getElementById('myNameLabel').textContent = myUsername;
+      if (typeof showLobbyMsg === 'function') showLobbyMsg('');
       const roomLbl = document.getElementById('myRoomLabel');
       if (roomLbl) roomLbl.textContent = getRoomCode();
       try {
@@ -481,23 +525,37 @@ body::after { opacity:.10; }
     }
     else if (msg.type === 'claim_failed') {
       if (msg.payload && msg.payload.playerId && String(msg.payload.playerId) !== String(myPlayerId)) return;
-      showLoginMsg(msg.payload && msg.payload.reason || '入座失败', false);
+      const why = (msg.payload && msg.payload.reason) || '入座失败';
+      if (!document.getElementById('playBox').classList.contains('hidden')) showLobbyMsg(why, false);
+      else showLoginMsg(why, false);
       setTimeout(() => { if (publicState) renderPlayerView(); }, 50);
     }
     else if (msg.type === 'login_failed') {
       if (msg.payload && msg.payload.playerId && String(msg.payload.playerId) !== String(myPlayerId)) return;
-      showLoginMsg(msg.payload && msg.payload.reason || '登录失败', false);
+      const why = (msg.payload && msg.payload.reason) || '登录失败';
       loggedIn = false;
       mySeatId = null;
       myPlayerId = null;
-      /* 座位被别人占了之类的情况：回到大厅继续选 */
+      clearTimeout(loginTimer);
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ seatId: 0, username: myUsername, password: myPassword }));
+      } catch (e) {}
       enterLobby();
+      showLobbyMsg(why + ' —— 在圆桌上点 ＋ 重新坐下；如果那张座位显示「已有名字」，让说书人点一下 🔓 释放', false);
     }
     else if (msg.type === '__connected__') {
-      /* 刚连上/重连成功：已入座就重新登录，否则待在大厅等状态 */
+      /* 刚连上/重连成功：有账号就恢复座位（按用户名找回），否则待在大厅 */
       loginTries = 0;
-      if (mySeatId && myUsername && myPassword) sendLogin();
+      if (myUsername && myPassword) sendLogin();
       else if (myUsername && !document.getElementById('playBox').classList.contains('hidden')) renderPlayerView();
+    }
+    else if (msg.type === 'reveal') {
+      gameReveal = msg.payload || null;
+      renderReveal();
+    }
+    else if (msg.type === 'reveal_off') {
+      gameReveal = null;
+      renderReveal();
     }
     else if (msg.type === 'dm_history') {
       const p = msg.payload || {};
@@ -561,6 +619,16 @@ body::after { opacity:.10; }
     enterLobby();
   });
 
+  /* 大厅提示条（登录框已隐藏，错误只能显示在这里） */
+  function showLobbyMsg(text, ok) {
+    const el = document.getElementById('lobbyMsg');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'lobby-msg' + (text ? '' : ' hidden') + (ok === false ? ' err' : (ok ? ' ok' : ''));
+    clearTimeout(el._t);
+    if (text) el._t = setTimeout(() => { el.textContent = ''; el.className = 'lobby-msg hidden'; }, 9000);
+  }
+
   /* 进入房间大厅：不占座位，先看圆桌 */
   function enterLobby() {
     document.getElementById('joinBox').classList.add('hidden');
@@ -591,12 +659,12 @@ body::after { opacity:.10; }
     showLoginMsg('正在入座…', true);
   }
 
-  /* 发登录请求；DM 没回应就自动重试几次（对方可能还没打开页面） */
+  /* 刷新恢复：只凭用户名+密码找回座位，不依赖本地记住的座位号 */
   function sendLogin() {
-    if (!mySeatId || !myUsername || !myPassword) return;
+    if (!myUsername || !myPassword) return;
     if (!myPlayerId) myPlayerId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-    ch.send('player_login', {
-      seatId: mySeatId, username: myUsername, password: myPassword, playerId: myPlayerId
+    ch.send('resume_login', {
+      username: myUsername, password: myPassword, playerId: myPlayerId
     });
     clearTimeout(loginTimer);
     if (loggedIn) return;
@@ -722,6 +790,33 @@ body::after { opacity:.10; }
     requestAnimationFrame(layoutPlayerSeats);
   }
 
+  const TEAM_COLOR = { townsfolk:'#2f6f9e', outsider:'#7d4bb0', minion:'#b0562a', demon:'#b03a3a' };
+
+  /* 复盘：把 DM 公布的完整角色表铺出来 */
+  function renderReveal() {
+    const box = document.getElementById('revealBox');
+    const list = document.getElementById('revealList');
+    if (!box || !list) return;
+    if (!gameReveal || !Array.isArray(gameReveal.players) || !gameReveal.players.length) {
+      box.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+    box.classList.remove('hidden');
+    list.innerHTML = gameReveal.players.map(p => {
+      const mine = mySeatId != null && Number(p.seat) === Number(mySeatId);
+      const color = TEAM_COLOR[p.team] || '#8d8578';
+      const roleHtml = p.role ? `${roleIcon(p.role)}${escapeHtml(p.roleName || '')}` : '—';
+      return `<div class="rv-item${mine ? ' mine' : ''}${p.alive ? '' : ' dead'}">
+        <span class="rv-seat">${p.seat}</span>
+        <span class="rv-name">${escapeHtml(p.name || '')}</span>
+        <span class="rv-role" style="color:${color}">${roleHtml}</span>
+        ${p.beliefName ? `<span class="rv-fake">假·${escapeHtml(p.beliefName)}</span>` : ''}
+        ${p.alive ? '' : '<span class="rv-dead">已死亡</span>'}
+      </div>`;
+    }).join('');
+  }
+
   function renderDmMessages() {
     const box = document.getElementById('dmMessagesBox');
     const list = document.getElementById('dmMessagesList');
@@ -734,6 +829,8 @@ body::after { opacity:.10; }
 
   function renderPlayerView() {
     renderTable();
+    /* 白天/夜晚切换整体色调 */
+    try { document.documentElement.dataset.phase = publicState.phase === 'day' ? 'day' : 'night'; } catch (e) {}
     const role = myRoleId ? ROLES[myRoleId] : null;
 
     if (!mySeatId) {
@@ -776,8 +873,16 @@ body::after { opacity:.10; }
       return;
     }
 
+    /* 已经提交过：先告诉他，别再显示"等点名" */
     if (submittedThisNight) {
       box.innerHTML = '<div class="tip ok">本夜你已提交过行动，等待 DM 确认。</div>';
+      return;
+    }
+
+    /* 夜晚顺序由说书人控制：没轮到就不能提交 */
+    const turnSeat = publicState.turnSeat ? Number(publicState.turnSeat) : null;
+    if (turnSeat && Number(mySeatId) !== turnSeat) {
+      box.innerHTML = '<div class="tip wait">⏳ 还没轮到你——等说书人点你的名字，这里会自动出现选项。</div>';
       return;
     }
 
@@ -801,6 +906,7 @@ body::after { opacity:.10; }
     }
 
     box.innerHTML = `
+      ${turnSeat ? '<div class="tip ok">🎯 轮到你行动了</div>' : ''}
       ${selectsHtml}
       <button id="btnSubmit" class="primary">提交行动</button>
       <div id="actionMsg" class="msg"></div>
@@ -854,14 +960,9 @@ body::after { opacity:.10; }
         myUsername = s.username;
         myPassword = s.password;
         myPlayerId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-        if (s.seatId) {
-          /* 上次已经入座 → 直接回到那个座位 */
-          mySeatId = s.seatId;
-          sendLogin();
-        } else {
-          /* 只记了账号 → 进大厅，自己点位置 */
-          enterLobby();
-        }
+        /* 先把大厅显示出来（同时向 DM 要一次状态），再尝试恢复座位 */
+        enterLobby();
+        sendLogin();
       }
     } catch (e) {}
   }

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -113,6 +113,43 @@ main { display: grid; grid-template-columns: 1fr 400px; gap: 16px; padding: 16px
 #nightOrder { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .night-item { background: #fff; border-left: 3px solid var(--border); border-radius: 6px; padding: 8px 10px; }
 .ni-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+.ni-msg { margin-left: auto; flex-shrink: 0; font-size: 11px; line-height: 1.2; padding: 2px 8px;
+  border-radius: 6px; cursor: pointer; transition: .15s;
+  color: #7d4bb0; background: rgba(125,75,176,.10); border: 1px solid rgba(125,75,176,.35); }
+.ni-msg:hover { background: rgba(125,75,176,.22); border-color: rgba(125,75,176,.6); }
+.ni-msg.done { color:#2e7d5b; background: rgba(46,125,91,.10); border-color: rgba(46,125,91,.35); }
+
+/* 夜晚顺序：轮到谁 + 快捷话术 */
+.ni-turn { margin-left:auto; flex-shrink:0; font-size:11px; line-height:1.2; padding:3px 9px;
+  border-radius:6px; cursor:pointer; color:#3d4a57; background: rgba(91,107,122,.12);
+  border:1px solid rgba(91,107,122,.4); }
+.ni-turn:hover { background: rgba(91,107,122,.22); }
+.ni-turn.on { color:#2e7d5b; font-weight:700; background: rgba(46,125,91,.16);
+  border-color: rgba(46,125,91,.55); }
+.night-item.turn { box-shadow: 0 0 0 2px rgba(46,125,91,.5); }
+.ni-quick { display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
+.ni-quick.hidden { display:none; }
+.qp { font-size:11px; line-height:1.4; padding:3px 8px; border-radius:6px; cursor:pointer;
+  color: var(--text); background:#fff; border:1px solid var(--border); }
+.qp:hover { background: rgba(255,255,255,.22); }
+.mini-btn { font-size:11px; padding:3px 9px; border-radius:6px; cursor:pointer; }
+/* 话术库编辑区 */
+.prompt-editor { margin-top:10px; padding:10px; border-radius:8px;
+  background:#fff; border:1px solid var(--border); }
+.prompt-editor.hidden { display:none; }
+.pe-head { font-size:11px; color: var(--muted); margin-bottom:6px; }
+.prompt-editor textarea { width:100%; box-sizing:border-box; resize:vertical; min-height:120px;
+  font-family:inherit; font-size:12px; line-height:1.6; padding:8px; border-radius:6px;
+  background:#fff; border:1px solid var(--border); color: var(--text); }
+.pe-actions { display:flex; gap:6px; margin-top:6px; }
+.ni-prompt { width:100%; font-size:12px; padding:5px 8px; border-radius:6px; cursor:pointer;
+  background:#fff; border:1px solid var(--border); color: var(--text); }.ni-edit { margin-top:6px; display:flex; flex-direction:column; gap:5px; }
+.ni-edit.hidden { display:none; }
+.ni-text { width:100%; box-sizing:border-box; resize:vertical; min-height:44px; font-family:inherit;
+  font-size:12px; line-height:1.5; padding:6px 8px; border-radius:6px;
+  background:#fff; border:1px solid var(--border); color: var(--text); }
+.ni-text::placeholder { color:#9a9aa8; }
+.ni-send { align-self:flex-end; font-size:11px; padding:3px 10px; border-radius:6px; cursor:pointer; }
 .ni-role { font-size: 12px; font-weight: 700; }
 .ni-player { font-size: 11px; color: var(--muted); }
 .ni-ability { font-size: 11px; color: var(--muted); line-height: 1.45; }
@@ -579,6 +616,33 @@ header select option { background:#1b1725; color:#efe7d8; }
 .spec-bar .sm:hover { background:rgba(232,198,92,.22); color:#fff; }
 .spec-bar .sm.danger { border-color:rgba(200,80,80,.5); color:#f0b8b8; }
 .spec-bar .sb-msg { color:#7ad19a; font-size:12px; }
+
+/* ---------- 白天 / 夜晚 色调 ---------- */
+html[data-phase="day"] body {
+  background:
+    linear-gradient(rgba(255,228,180,.30), rgba(255,208,145,.44)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+html[data-phase="night"] body {
+  background:
+    linear-gradient(rgba(10,8,14,.14), rgba(10,8,14,.32)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+
+/* ---------- 酒鬼假身份选择 ---------- */
+.seat-belief-row { display:flex; align-items:center; gap:4px; margin:-1px 0 5px; }
+.seat-belief-row > span { font-size:9px; color:#8c8474; flex-shrink:0; }
+.seat-belief-row select {
+  flex:1; min-width:0; font-size:10px; padding:1px 4px; border-radius:5px;
+  background: rgba(255,255,255,.92); border:1px solid rgba(155,107,209,.45); color:#4d4557;
+}
+.ni-tag { display:inline-block; margin-left:5px; padding:0 4px; border-radius:3px;
+  font-size:9px; font-weight:400; color:#b03a3a; background: rgba(176,58,58,.14);
+  border:1px solid rgba(176,58,58,.3); vertical-align:1px; }
+
+/* ---------- 红鲱鱼 ---------- */
+.seat-redh { font-size:10px; color:#b06a14; margin:-1px 0 5px; letter-spacing:.3px; }
+.ni-rh { margin-top:3px; font-size:10px; color:#b06a14; }
 </style>
 </head>
 <body>
@@ -592,10 +656,12 @@ header select option { background:#1b1725; color:#efe7d8; }
       <option>9</option><option>10</option><option>11</option><option>12</option>
       <option>13</option><option>14</option><option>15</option>
     </select>
+    <button id="btnPhase">☀️ 进入白天</button>
     <button id="btnNextNight" class="primary">🌙 下一夜</button>
     <button id="btnNew">新游戏</button>
     <button id="btnClearSeats">清空座位</button>
     <button id="btnSpectator">👁 旁观</button>
+    <button id="btnReveal">🎭 复盘</button>
   </div>
 </header>
 
@@ -651,12 +717,24 @@ header select option { background:#1b1725; color:#efe7d8; }
     <div class="panel">
       <div class="panel-head">
         <h2>夜 晚 顺 序</h2>
-        <div class="tabs">
-          <button class="tab active" data-night="first">首夜</button>
-          <button class="tab" data-night="other">其他夜</button>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <button id="btnPromptLib" class="mini-btn" title="编辑快捷话术">💬 话术库</button>
+          <button id="btnTurnFree" class="mini-btn" title="取消按顺序限制，所有人都能提交">🔓 全部放开</button>
+          <div class="tabs">
+            <button class="tab active" data-night="first">首夜</button>
+            <button class="tab" data-night="other">其他夜</button>
+          </div>
         </div>
       </div>
       <ul id="nightOrder"></ul>
+      <div id="promptEditor" class="prompt-editor hidden">
+        <div class="pe-head" id="promptHead">话术库（一行一条，可用 {name} / {seat} 占位）</div>
+        <textarea id="promptText" rows="10" spellcheck="false"></textarea>
+        <div class="pe-actions">
+          <button id="btnSavePrompts" class="mini-btn">保存</button>
+          <button id="btnResetPrompts" class="mini-btn">恢复默认</button>
+        </div>
+      </div>
     </div>
 
     <div class="panel">
@@ -680,6 +758,10 @@ header select option { background:#1b1725; color:#efe7d8; }
           <div class="vote-field wide">
             <label>信息内容</label>
             <input id="dmMsgText" placeholder="例如：你得知 3 号与 7 号中有一名恶魔">
+          </div>
+          <div class="vote-field wide">
+            <label>快捷话术</label>
+            <select id="dmPromptSel"><option value="">💬 选一条填入…</option></select>
           </div>
         </div>
         <button id="btnSendDmMsg" class="primary sm">发送</button>
@@ -756,7 +838,11 @@ let state = {
   dmMessages: [],  // { seatId, text, night, time }
   submitted: {},   // { 座位号: 夜晚序号 } —— 本夜已经提交过行动的座位
   pending: [],     // 待确认的玩家行动（随存档持久化）
-  spectator: { enabled: false, password: '' }  // 旁观者视角
+  spectator: { enabled: false, password: '' },  // 旁观者视角
+  rolesSent: false,  // 是否已经发过身份（发过之后玩家不能换座位）
+  revealed: false,   // 复盘模式：是否已向所有玩家公布角色
+  turnSeat: null,    // 夜晚顺序：当前轮到哪个座位（null = 不限制）
+  prompts: null      // 自定义话术库（null = 用默认）
 };
 
 let voteNomineeId = null;
@@ -784,7 +870,8 @@ function load() {
       role: (typeof p.role === 'string' && ROLES[p.role]) ? p.role : null,
       alive: p.alive !== false,
       marks: Array.isArray(p.marks) ? p.marks.filter(m => MARKS.includes(m)) : [],
-      belief: (typeof p.belief === 'string' && ROLES[p.belief]) ? p.belief : null
+      belief: (typeof p.belief === 'string' && ROLES[p.belief]) ? p.belief : null,
+      redHerring: !!p.redHerring
     }));
     state.pool = Array.isArray(s.pool) ? s.pool.filter(id => ROLES[id]) : [];
     /* 老存档里的酒鬼没有假身份，这里补一个 */
@@ -812,6 +899,12 @@ function load() {
     state.spectator = (s.spectator && typeof s.spectator === 'object')
       ? { enabled: !!s.spectator.enabled, password: String(s.spectator.password || '') }
       : { enabled: false, password: '' };
+    state.rolesSent = !!s.rolesSent;
+    state.revealed = !!s.revealed;
+    state.turnSeat = (typeof s.turnSeat === 'number' && s.turnSeat >= 1) ? s.turnSeat : null;
+    state.prompts = (Array.isArray(s.prompts) && s.prompts.length)
+      ? s.prompts.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim())
+      : null;
     pendingActions = Array.isArray(s.pending) ? s.pending : [];
     pendingActions.sort((x, y) => nightOrderRank(x.roleId) - nightOrderRank(y.roleId));
 
@@ -819,12 +912,36 @@ function load() {
     state.accounts.forEach(a => {
       seatOccupancy.set(a.seatId, { playerId: a.playerId, username: a.username });
     });
+    ensureRedHerring();   // 老存档里没有红鲱鱼时补一个
   } catch (e) { console.warn('读取存档失败', e); }
 }
 
 function playerNameById(id) {
   const p = state.players.find(x => String(x.id) === String(id));
   return p ? p.name : '?';
+}
+/* 玩家提交的行动里 seatId 是 0 起的座位序号（不是玩家 id），统一用这个查 */
+function playerBySeatIdx(idx) {
+  const p = state.players[Number(idx)];
+  return p || null;
+}
+function playerNameBySeatIdx(idx) {
+  const p = playerBySeatIdx(idx);
+  return p ? p.name : '?';
+}
+
+/* 酒鬼假身份的可选项（镇民、且不在角色池里；当前值始终保留） */
+function beliefOptions(selected) {
+  const used = new Set(state.pool || []);
+  const cands = Object.entries(ROLES)
+    .filter(([id, r]) => r.team === 'townsfolk' && (!used.has(id) || id === selected))
+    .map(([id, r]) => ({ id, name: r.name }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+  let html = '<option value="">🎲 随机</option>';
+  cands.forEach(c => {
+    html += `<option value="${c.id}"${c.id === selected ? ' selected' : ''}>${c.name}</option>`;
+  });
+  return html;
 }
 
 /* 酒鬼：给一张不在场的镇民牌当「假身份」（不能和恶魔的伪装重复） */
@@ -838,6 +955,50 @@ function pickDrunkBelief() {
   }
   if (!cands.length) cands = Object.keys(ROLES).filter(k => ROLES[k].team === 'townsfolk');
   return cands[Math.floor(Math.random() * cands.length)];
+}
+
+/* ---------- 占卜师的红鲱鱼 ---------- */
+/* 好人 = 镇民 / 外来者 */
+function isGoodRole(roleId) {
+  const r = roleId ? ROLES[roleId] : null;
+  return !!r && (r.team === 'townsfolk' || r.team === 'outsider');
+}
+/* 谁在"扮演"占卜师（酒鬼假扮也算） */
+function fortuneTellerSeat() {
+  return state.players.find(p => p.alive && p.role &&
+    (p.role === 'fortune_teller' || (p.role === 'drunk' && p.belief === 'fortune_teller'))) || null;
+}
+function redHerringCandidates(ftId) {
+  return state.players.filter(p =>
+    p.alive && isGoodRole(p.role) && String(p.id) !== String(ftId));
+}
+function currentRedHerring() {
+  return state.players.find(p => p.redHerring) || null;
+}
+/* 没有红鲱鱼（或原来那位不符合条件）时，自动挑一名好人 */
+function ensureRedHerring() {
+  const ft = fortuneTellerSeat();
+  if (!ft) {
+    state.players.forEach(p => { p.redHerring = false; });
+    return;
+  }
+  const cands = redHerringCandidates(ft.id);
+  const cur = currentRedHerring();
+  if (cur && cands.some(c => String(c.id) === String(cur.id))) return;
+  state.players.forEach(p => { p.redHerring = false; });
+  if (!cands.length) return;
+  cands[Math.floor(Math.random() * cands.length)].redHerring = true;
+}
+function redHerringOptions(ftId) {
+  const cands = redHerringCandidates(ftId);
+  const cur = currentRedHerring();
+  let html = '<option value="">— 未指定 —</option>';
+  cands.forEach(p => {
+    const seat = state.players.indexOf(p) + 1;
+    const on = cur && String(cur.id) === String(p.id);
+    html += `<option value="${p.id}"${on ? ' selected' : ''}>${seat} 号 · ${escapeHtml(p.name)}</option>`;
+  });
+  return html;
 }
 
 /* 玩家实际应该看到的角色（酒鬼看到的是假牌） */
@@ -1034,7 +1195,13 @@ function renderSeats() {
       <div class="seat-role-row">
         <select class="seat-role" data-id="${p.id}">${roleOptions(p.role)}</select>
       </div>
-      ${p.role === 'drunk' && p.belief ? `<div style="font-size:10px;color:#7a7a8c;margin:-2px 0 5px;">🎭 假装：${ROLES[p.belief].name}</div>` : ''}
+      ${p.role === 'drunk'
+        ? `<div class="seat-belief-row"><span>假身份</span><select class="seat-belief" data-id="${p.id}">${beliefOptions(p.belief)}</select></div>`
+        : ''}
+      ${p.role === 'fortune_teller'
+        ? `<div class="seat-belief-row"><span>🐟 红鲱鱼</span><select class="seat-redherring" data-id="${p.id}">${redHerringOptions(p.id)}</select></div>`
+        : ''}
+      ${p.redHerring ? '<div class="seat-redh">🐟 红鲱鱼（会被占卜师看成恶魔）</div>' : ''}
       <div class="seat-marks">
         ${MARKS.map(m => `<button class="mark${p.marks.includes(m) ? ' on' : ''}"
             data-id="${p.id}" data-mark="${m}">${MARK_ICON[m] || ''}${m}</button>`).join('')}
@@ -1058,30 +1225,133 @@ function renderComp() {
     `<span class="${cur[k] === t[k] ? 'ok' : 'bad'}">${TEAM_LABEL[k]} <b>${cur[k]}/${t[k]}</b></span>`
   ).join('');
 }
+/* 玩家在夜晚"实际按哪个角色行动"：酒鬼按假身份走 */
+function effectiveNightRole(p) {
+  if (!p || !p.role) return null;
+  if (p.role === 'drunk' && p.belief && ROLES[p.belief]) return p.belief;
+  return p.role;
+}
+
+/* ---------- 说书人话术库（可在界面上编辑） ---------- */
+const DEFAULT_PROMPTS = [
+  '请选择一名玩家。',
+  '请选择两名玩家。',
+  '请选择一名玩家（不能选择自己）。',
+  '请选择要保护的人。',
+  '请选择要下毒的对象。',
+  '请选择要杀害的目标。',
+  '请选择你的主人。',
+  '请选择一名玩家，得知其角色。',
+  '你得知：这两名玩家中，有一名是……',
+  '你得知：与你相邻的存活玩家中有 N 名邪恶。',
+  '你得知：场上有 N 对邪恶玩家相邻。',
+  '你得知：昨天被处决的玩家是……',
+  '你得知：目标中有恶魔 / 没有恶魔。',
+  '你可以查看魔典，现在开始。',
+  '你的行动已记录，请闭眼。',
+  '请确认你的选择。'
+];
+function promptList() {
+  return (Array.isArray(state.prompts) && state.prompts.length) ? state.prompts : DEFAULT_PROMPTS;
+}
+/* 把 {name} / {seat} 换成玩家信息 */
+function fillPrompt(text, seatNo) {
+  const pname = playerNameBySeatIdx(Number(seatNo) - 1);
+  return String(text || '')
+    .replace(/\{name\}/g, pname)
+    .replace(/\{seat\}/g, String(seatNo));
+}
+
+/* 当前夜晚的出手顺序（座位号数组） */
+function nightOrderSeats() {
+  const order = state.night === 'first' ? ORDER_FIRST : ORDER_OTHER;
+  const rows = [];
+  state.players.forEach((p, i) => {
+    if (!p.alive || !p.role) return;
+    const eff = effectiveNightRole(p);
+    const rank = eff ? order.indexOf(eff) : -1;
+    if (rank < 0) return;
+    rows.push({ seat: i + 1, rank });
+  });
+  rows.sort((a, b) => a.rank - b.rank);
+  return rows.map(r => r.seat);
+}
+function nextNightSeat(seatNo) {
+  const seats = nightOrderSeats();
+  const idx = seats.indexOf(Number(seatNo));
+  if (idx === -1) return null;
+  return seats[idx + 1] || null;
+}
+/* 切换"现在轮到谁"（null = 不限制） */
+function setNightTurn(seatNo) {
+  state.turnSeat = seatNo ? Number(seatNo) : null;
+  if (state.turnSeat) {
+    const p = playerBySeatIdx(state.turnSeat - 1);
+    addLog(`▶ 轮到 ${p ? p.name : ('座位 ' + state.turnSeat)} 行动`);
+  } else {
+    addLog('🔓 夜晚顺序：已放开，所有人可提交');
+  }
+  render();
+  save();
+  broadcastPublicState();
+}
+
 function renderNightOrder() {
   const order = state.night === 'first' ? ORDER_FIRST : ORDER_OTHER;
   const list = document.getElementById('nightOrder');
   list.innerHTML = '';
-  const alive = state.players.filter(p => p.alive && p.role);
-  let count = 0;
-  for (const roleId of order) {
-    const p = alive.find(x => x.role === roleId);
-    if (!p) continue;
-    count++;
-    const r = ROLES[roleId];
+
+  /* 占卜师那一行额外提示红鲱鱼 */
+  const rhLine = () => {
+    const rh = currentRedHerring();
+    if (!rh) return '';
+    const rhSeat = state.players.indexOf(rh) + 1;
+    return `<div class="ni-rh">🐟 红鲱鱼：${rhSeat} 号 ${escapeHtml(rh.name)}（会被看成恶魔）</div>`;
+  };
+
+  /* 按玩家遍历，这样酒鬼（假身份）也能出现在对应位置 */
+  const rows = [];
+  state.players.forEach((p, i) => {
+    if (!p.alive || !p.role) return;
+    const eff = effectiveNightRole(p);
+    if (!eff) return;
+    const rank = order.indexOf(eff);
+    if (rank < 0) return;                 // 这个夜晚不行动
+    rows.push({ p, seatNo: i + 1, roleId: eff, rank, isDrunk: p.role === 'drunk' });
+  });
+  rows.sort((a, b) => a.rank - b.rank);
+
+  rows.forEach((row) => {
+    const r = ROLES[row.roleId];
+    const isTurn = Number(state.turnSeat) === row.seatNo;
     const li = document.createElement('li');
-    li.className = 'night-item';
+    li.className = 'night-item' + (isTurn ? ' turn' : '');
     li.style.borderLeftColor = `var(--${r.team})`;
+    const promptOpts = promptList().map((t, i) =>
+      `<option value="${i}">${escapeHtml(t)}</option>`
+    ).join('');
     li.innerHTML = `
       <div class="ni-head">
-        <span class="ni-role" style="color:var(--${r.team})">${roleIcon(roleId)}${r.name}</span>
-        <span class="ni-player">→ ${escapeHtml(p.name)}</span>
+        <span class="ni-role" style="color:var(--${r.team})">${roleIcon(row.roleId)}${r.name}${row.isDrunk ? '<span class="ni-tag">酒鬼·无效</span>' : ''}</span>
+        <span class="ni-player">→ ${escapeHtml(row.p.name)}</span>
+        <button class="ni-turn${isTurn ? ' on' : ''}" data-seat="${row.seatNo}" title="点他：现在轮到他行动">${isTurn ? '▶ 行动中' : '▶'}</button>
       </div>
-      <div class="ni-ability">${escapeHtml(r.ability)}</div>
+      <div class="ni-ability">${escapeHtml(r.ability)}${row.roleId === 'fortune_teller' ? rhLine() : ''}</div>
+      <div class="ni-quick">
+        <select class="ni-prompt" data-seat="${row.seatNo}">
+          <option value="">💬 选择话术…</option>${promptOpts}
+          <option value="free">✍️ 自定义（清空重写）</option>
+        </select>
+      </div>
+      <div class="ni-edit hidden" data-edit="${row.seatNo}">
+        <textarea class="ni-text" rows="2" data-seat="${row.seatNo}" placeholder="选一条话术会自动填进来，可以随便改，改好再点发送"></textarea>
+        <button class="ni-send" data-seat="${row.seatNo}">📨 发送给 TA</button>
+      </div>
     `;
     list.appendChild(li);
-  }
-  if (!count) list.innerHTML = '<li class="empty">暂无夜晚行动角色</li>';
+  });
+
+  if (!rows.length) list.innerHTML = '<li class="empty">暂无夜晚行动角色</li>';
 }
 
 function actionInputNeeded(a) {
@@ -1107,9 +1377,9 @@ function renderPending() {
     return;
   }
   box.innerHTML = pendingActions.map((a, i) => {
-    const pName = playerNameById(a.seatId);
+    const pName = playerNameBySeatIdx(a.seatId);
     const role = a.roleId && ROLES[a.roleId] ? ROLES[a.roleId] : null;
-    const actorObj = state.players.find(x => String(x.id) === String(a.seatId));
+    const actorObj = playerBySeatIdx(a.seatId);
     const drunkTag = (actorObj && actorObj.role === 'drunk') ? ' 🍺酒鬼' : '';
     const roleName = (role ? role.name : a.roleId) + drunkTag;
     const marksTag = (actorObj && actorObj.marks.length)
@@ -1147,7 +1417,7 @@ function renderPending() {
 
 function applyPendingAction(a, extraResult, forcedDisabled) {
   const targets = (a.targetSeats || []).map(id => state.players.find(x => String(x.id) === String(id))).filter(Boolean);
-  const actor = state.players.find(x => String(x.id) === String(a.seatId));
+  const actor = playerBySeatIdx(a.seatId);
   const roleName = a.roleId && ROLES[a.roleId] ? ROLES[a.roleId].name : a.actionType;
   const targetNames = targets.map(t => t.name).join('、');
   const actorIsDrunk = !!(actor && actor.role === 'drunk');
@@ -1178,6 +1448,11 @@ function applyPendingAction(a, extraResult, forcedDisabled) {
         notes.push(`${t.name} 死亡`);
       });
     }
+  }
+  /* 占卜师查验里包含红鲱鱼时提醒说书人 */
+  if (a.actionType === 'divine') {
+    const rh = currentRedHerring();
+    if (rh && targets.some(t => String(t.id) === String(rh.id))) notes.push('目标中包含红鲱鱼');
   }
   if (disabled) {
     notes.push(actorIsDrunk
@@ -1320,6 +1595,14 @@ function renderVotePanel() {
   renderVoteHistory();
 }
 
+function renderPromptSelect() {
+  const sel = document.getElementById('dmPromptSel');
+  if (!sel) return;
+  const list = promptList();
+  sel.innerHTML = '<option value="">💬 选一条填入…</option>' +
+    list.map((t, i) => `<option value="${i}">${escapeHtml(t)}</option>`).join('');
+}
+
 function renderDmMsgSeatSelect() {
   const sel = document.getElementById('dmMsgSeat');
   const prev = sel.value;
@@ -1335,7 +1618,7 @@ function renderDmMsgHistory() {
   if (!state.dmMessages.length) { box.innerHTML = '<div class="empty">暂无私信</div>'; return; }
   const recent = state.dmMessages.slice(-10).reverse();
   box.innerHTML = recent.map(m =>
-    `<div class="dm-msg-item">第 ${m.night} 夜 · 座位 ${m.seatId} <b>${escapeHtml(playerNameById(m.seatId - 1))}</b>：${escapeHtml(m.text)}</div>`
+    `<div class="dm-msg-item">第 ${m.night} 夜 · 座位 ${m.seatId} <b>${escapeHtml(playerNameBySeatIdx(m.seatId - 1))}</b>：${escapeHtml(m.text)}</div>`
   ).join('');
 }
 
@@ -1388,10 +1671,26 @@ function advanceNight() {
   voteYesSet.clear();
   pendingActions = [];
   state.submitted = {};
+  /* 新的一夜：出手顺序从第一位重新开始 */
+  state.night = state.currentNight === 1 ? 'first' : 'other';
+  const firstSeat = nightOrderSeats()[0];
+  state.turnSeat = firstSeat || null;
+  if (firstSeat) {
+    const fp = playerBySeatIdx(firstSeat - 1);
+    addLog(`▶ 今夜从 ${fp ? fp.name : ('座位 ' + firstSeat)} 开始`);
+  }
   addLog(`🌙 进入第 ${state.currentNight} 夜（已汇总第 ${nightNo} 夜/天）`);
   render();
   broadcastPublicState();
   dmChannel.send('night_advanced', { currentNight: state.currentNight });
+}
+
+/* 白天/夜晚的色调与按钮文字 */
+function applyPhaseTheme() {
+  const isDay = state.phase === 'day';
+  try { document.documentElement.dataset.phase = isDay ? 'day' : 'night'; } catch (e) {}
+  const btn = document.getElementById('btnPhase');
+  if (btn) btn.textContent = isDay ? '🌙 进入夜晚' : '☀️ 进入白天';
 }
 
 function render() {
@@ -1401,12 +1700,14 @@ function render() {
   renderSeats();
   renderComp();
   renderNightOrder();
+  renderPromptSelect();
   renderPending();
   renderNightLogs();
   renderVotePanel();
   renderDmMsgSeatSelect();
   renderDmMsgHistory();
   renderLog();
+  applyPhaseTheme();
   save();
 }
 
@@ -1440,6 +1741,9 @@ function newGame(count) {
   state.votes = [];
   state.accounts = [];
   state.dmMessages = [];
+  state.rolesSent = false;
+  state.revealed = false;
+  state.turnSeat = null;
   voteNomineeId = null;
   voteNominatorId = null;
   voteYesSet.clear();
@@ -1484,7 +1788,9 @@ function dealFromPool() {
     p.alive = true;
     p.marks = [];
     p.belief = (p.role === 'drunk') ? pickDrunkBelief() : null;
+    p.redHerring = false;
   });
+  ensureRedHerring();
   lastSnapshot = snapshotPlayers();
   addLog('🎲 已根据角色池随机分发到座位');
   render();
@@ -1492,7 +1798,8 @@ function dealFromPool() {
 }
 function clearSeats() {
   if (!confirm('清空所有座位的玩家名、角色与状态？角色池会保留。')) return;
-  state.players.forEach(p => { p.role = null; p.belief = null; p.marks = []; p.alive = true; });
+  state.players.forEach(p => { p.role = null; p.belief = null; p.marks = []; p.alive = true; p.redHerring = false; });
+  state.rolesSent = false;   // 重新发放身份前，允许玩家重新选座
   lastSnapshot = snapshotPlayers();
   addLog('🧹 已清空座位角色与状态');
   render();
@@ -1510,6 +1817,23 @@ function broadcastPublicState() {
       dmChannel.send('grimoire', Object.assign({}, base, { clientId: cid }));
     });
   }
+}
+
+/* 复盘：给所有玩家公布全部角色 */
+function buildReveal() {
+  return {
+    room: getRoomCode(),
+    currentNight: state.currentNight,
+    players: state.players.map((p, i) => ({
+      seat: i + 1,
+      name: p.name,
+      alive: p.alive,
+      role: p.role || null,
+      roleName: p.role ? ROLES[p.role].name : '',
+      team: p.role ? ROLES[p.role].team : '',
+      beliefName: (p.role === 'drunk' && p.belief && ROLES[p.belief]) ? ROLES[p.belief].name : ''
+    }))
+  };
 }
 
 /* 旁观者能看到的完整魔典（只读快照） */
@@ -1532,7 +1856,7 @@ function buildGrimoire() {
     bluff: state.bluff.filter(Boolean).map(id => ROLES[id] ? ROLES[id].name : id),
     log: state.log.slice(-40),
     pending: pendingActions.map(a => ({
-      name: playerNameById(a.seatId),
+      name: playerNameBySeatIdx(a.seatId),
       roleName: a.roleId && ROLES[a.roleId] ? ROLES[a.roleId].name : '',
       actionType: a.actionType,
       targets: (a.targetSeats || []).map(id => playerNameById(id))
@@ -1547,6 +1871,7 @@ function broadcastRoleToSeat(seatId, silent) {
   const seatNo = state.players.indexOf(p) + 1;
   const shown = displayRoleOf(p);
   dmChannel.send('assign_role', { seatId: seatNo, roleId: shown, roleName: ROLES[shown].name });
+  state.rolesSent = true;   // 发过身份后锁定座位
   if (!silent) addLog(`📤 已向 ${p.name} 发送角色信息`);
   return true;
 }
@@ -1558,8 +1883,8 @@ function sendPrivateMsg(seatNo, text) {
   const t = new Date().toLocaleTimeString();
   state.dmMessages.push({ seatId: seat, text, night: state.currentNight, time: t });
   dmChannel.send('dm_message', { seatId: seat, text, night: state.currentNight, time: t });
-  addNightLine(state.currentNight, `私信 ${playerNameById(seat - 1)}：${text}`, 'dm');
-  addLog(`📨 已私信 ${playerNameById(seat - 1)}：${text}`);
+  addNightLine(state.currentNight, `私信 ${playerNameBySeatIdx(seat - 1)}：${text}`, 'dm');
+  addLog(`📨 已私信 ${playerNameBySeatIdx(seat - 1)}：${text}`);
   return true;
 }
 
@@ -1665,7 +1990,45 @@ document.addEventListener('DOMContentLoaded', function () {
         roleName: shownRole ? ROLES[shownRole].name : '',
         submitted: Number(state.submitted[seat]) === Number(state.currentNight) });
       sendDmHistory(seat);
+      if (state.revealed) dmChannel.send('reveal', buildReveal());
       addLog(`🔐 座位 ${seat} 登录：${username}`);
+      renderSeats();
+      renderComp();
+      renderVotePanel();
+      renderDmMsgSeatSelect();
+      save();
+      broadcastPublicState();
+    }
+
+    /* 刷新恢复：只按用户名+密码找人，不再依赖座位号（座位可能被调整/清理） */
+    else if (msg.type === 'resume_login') {
+      const { username, password, playerId } = msg.payload || {};
+      const acc = state.accounts.find(a => a.username === username);
+      if (!acc) {
+        dmChannel.send('login_failed', { reason: '没找到这个用户（可能被释放了），请重新选座', playerId });
+        return;
+      }
+      const samePlayer = acc.playerId === playerId;
+      if (acc.password !== password && !samePlayer) {
+        dmChannel.send('login_failed', { reason: '密码不对，请重新输入', playerId });
+        return;
+      }
+      const seat = Number(acc.seatId);
+      if (!seat || seat < 1 || seat > state.players.length) {
+        dmChannel.send('login_failed', { reason: '你原来的座位已经不存在了，请重新选座', playerId });
+        return;
+      }
+      acc.playerId = playerId;
+      seatOccupancy.set(seat, { playerId, username });
+      const rp = state.players[seat - 1];
+      rp.name = username;
+      const rRole = displayRoleOf(rp);
+      dmChannel.send('login_ok', { seatId: seat, playerId, roleId: rRole || null,
+        roleName: rRole ? ROLES[rRole].name : '',
+        submitted: Number(state.submitted[seat]) === Number(state.currentNight) });
+      sendDmHistory(seat);
+      if (state.revealed) dmChannel.send('reveal', buildReveal());
+      addLog(`♻️ 座位 ${seat} 重新连接：${username}`);
       renderSeats();
       renderComp();
       renderVotePanel();
@@ -1684,6 +2047,15 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       if (!username || !password) {
         dmChannel.send('claim_failed', { reason: '用户名或密码不能为空', playerId });
+        return;
+      }
+      /* 身份已经发出去之后，玩家不能再换座位（防止看到别人的身份） */
+      const movingAcc = state.accounts.find(a => a.username === username);
+      if (state.rolesSent && movingAcc && Number(movingAcc.seatId) !== seatNo) {
+        dmChannel.send('claim_failed', {
+          reason: '游戏已经开始（身份已发出），不能换座位。需要换的话让说书人点 🔓 释放再重新坐下',
+          playerId
+        });
         return;
       }
       /* 目标座位不能是别人坐着的 */
@@ -1757,13 +2129,14 @@ document.addEventListener('DOMContentLoaded', function () {
         state.submitted[seatNo] = state.currentNight;
         save();
         renderPending();
-        addLog(`📨 收到 ${playerNameById(a.seatId)} 的行动：${a.actionType} → ${(a.targetSeats||[]).map(id=>playerNameById(id)).join('、')}`);
+        addLog(`📨 收到 ${playerNameBySeatIdx(a.seatId)} 的行动：${a.actionType} → ${(a.targetSeats||[]).map(id=>playerNameById(id)).join('、')}`);
       }
     }
 
     /* 玩家刷新页面 / 换设备后主动索取一次完整状态 */
     else if (msg.type === 'request_state') {
       broadcastPublicState();
+      if (state.revealed) dmChannel.send('reveal', buildReveal());
       const sid = msg.payload && msg.payload.seatId;
       if (sid !== null && sid !== undefined && sid !== '') {
         broadcastRoleToSeat(Number(sid));
@@ -1830,11 +2203,44 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   stage.addEventListener('change', e => {
+    /* 占卜师改红鲱鱼 */
+    if (e.target.classList.contains('seat-redherring')) {
+      const picked = state.players.find(x => String(x.id) === String(e.target.value));
+      state.players.forEach(p => { p.redHerring = false; });
+      if (picked) {
+        picked.redHerring = true;
+        addLog(`🐟 红鲱鱼改为：${picked.name}`);
+      } else {
+        addLog('🐟 已清除红鲱鱼');
+      }
+      render();
+      save();
+      return;
+    }
+    /* 酒鬼假身份选择 */
+    if (e.target.classList.contains('seat-belief')) {
+      const bp = state.players.find(x => String(x.id) === String(e.target.dataset.id));
+      if (!bp) return;
+      bp.belief = e.target.value ? e.target.value : pickDrunkBelief();
+      if (!ROLES[bp.belief]) bp.belief = pickDrunkBelief();
+      const bi = state.bluff.indexOf(bp.belief);
+      if (bi >= 0) {
+        state.bluff[bi] = null;
+        addLog('⚠️ 恶魔伪装与酒鬼假身份重复，已清空该条伪装');
+      }
+      addLog(`🎭 ${bp.name} 的酒鬼假身份：${ROLES[bp.belief].name}`);
+      ensureRedHerring();
+      broadcastRoleToSeat(bp.id);
+      render();
+      broadcastPublicState();
+      return;
+    }
     if (!e.target.classList.contains('seat-role')) return;
     const p = state.players.find(x => String(x.id) === String(e.target.dataset.id));
     if (p) {
       p.role = e.target.value || null;
       p.belief = (p.role === 'drunk') ? (p.belief || pickDrunkBelief()) : null;
+      ensureRedHerring();
       if (p.role === 'drunk') broadcastRoleToSeat(p.id);
       render();
       broadcastPublicState();
@@ -1892,6 +2298,20 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!state.players.length) { alert('还没有玩家'); return; }
     if (!confirm(`结束第 ${state.currentNight} 夜/天，进入第 ${state.currentNight + 1} 夜？\n将自动汇总本次状态变化并清除中毒/醉酒/保护。`)) return;
     advanceNight();
+  });
+
+  /* 夜 ↔ 白 切换（讨论阶段用） */
+  document.getElementById('btnPhase').addEventListener('click', () => {
+    state.phase = state.phase === 'day' ? 'night' : 'day';
+    if (state.phase === 'day') {
+      addLog(`☀️ 进入第 ${state.currentNight} 天 · 白天讨论`);
+    } else {
+      addLog(`🌙 回到第 ${state.currentNight} 夜`);
+    }
+    applyPhaseTheme();
+    render();
+    save();
+    broadcastPublicState();
   });
 
   document.getElementById('btnNew').addEventListener('click', () => {
@@ -1995,6 +2415,28 @@ document.addEventListener('DOMContentLoaded', function () {
     addLog('👁 已开启旁观视角');
     broadcastPublicState();
   });
+
+  /* 复盘模式：把所有人的角色公布给所有玩家 */
+  document.getElementById('btnReveal').addEventListener('click', () => {
+    if (!dmChannel) { alert('还没连上服务器，等左下角显示「已连接」再试'); return; }
+    if (state.revealed) {
+      if (!confirm('关闭复盘模式？玩家端的角色表会收起来。')) return;
+      state.revealed = false;
+      dmChannel.send('reveal_off', {});
+      addLog('🎭 已关闭复盘');
+      save();
+      showFeedback(feedback, '已关闭复盘', true);
+      return;
+    }
+    if (!confirm('公布所有玩家的角色？（一般在对局结束时使用）')) return;
+    state.revealed = true;
+    dmChannel.send('reveal', buildReveal());
+    addLog('🎭 已开启复盘：所有角色已公布');
+    save();
+    broadcastPublicState();
+    showFeedback(feedback, '已公布所有角色', true);
+  });
+
   document.getElementById('btnAutoFill').addEventListener('click', autoFillPool);
   document.getElementById('btnClearPool').addEventListener('click', clearPool);
   document.getElementById('btnDeal').addEventListener('click', dealFromPool);
@@ -2030,6 +2472,99 @@ document.addEventListener('DOMContentLoaded', function () {
     renderDmMsgHistory();
     renderNightLogs();
     save();
+  });
+
+  /* 夜晚顺序：▶ 轮到他 */
+  document.getElementById('nightOrder').addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('button') : null;
+    if (!btn) return;
+    const seatNo = Number(btn.dataset.seat);
+    if (!seatNo) return;
+    if (btn.classList.contains('ni-turn')) {
+      setNightTurn(Number(state.turnSeat) === seatNo ? null : seatNo);
+      return;
+    }
+    if (btn.classList.contains('ni-send')) {
+      const li = btn.closest('.night-item');
+      const ta = li ? li.querySelector('.ni-text') : null;
+      const text = fillPrompt(String(ta ? ta.value : '').trim(), seatNo);
+      if (!text) { if (ta) ta.focus(); return; }
+      if (!dmChannel) { alert('还没连上服务器，等左下角显示「已连接」再试'); return; }
+      sendPrivateMsg(seatNo, text);
+      renderDmMsgHistory();
+      renderNightLogs();
+      renderLog();
+      save();
+      showFeedback(feedback, '已私信 ' + playerNameBySeatIdx(seatNo - 1), true);
+      if (ta) ta.value = '';
+      const edit = li ? li.querySelector('.ni-edit') : null;
+      if (edit) edit.classList.add('hidden');
+    }
+  });
+
+  /* 夜晚顺序：选话术 → 填进可编辑文本框（不直接发） */
+  document.getElementById('nightOrder').addEventListener('change', (e) => {
+    const sel = e.target;
+    if (!sel || !sel.classList.contains('ni-prompt')) return;
+    const seatNo = Number(sel.dataset.seat);
+    const val = sel.value;
+    sel.value = '';
+    if (!seatNo) return;
+    const li = sel.closest('.night-item');
+    if (!li) return;
+    const edit = li.querySelector('.ni-edit');
+    const ta = li.querySelector('.ni-text');
+    if (!edit || !ta) return;
+    ta.value = (val === 'free') ? '' : fillPrompt(promptList()[Number(val)] || '', seatNo);
+    edit.classList.remove('hidden');
+    ta.focus();
+    try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (err) {}
+  });
+  const freeBtn = document.getElementById('btnTurnFree');
+  if (freeBtn) freeBtn.addEventListener('click', () => setNightTurn(null));
+  /* 话术库：展开 / 保存 / 恢复默认 */
+  const promptLibBtn = document.getElementById('btnPromptLib');
+  if (promptLibBtn) promptLibBtn.addEventListener('click', () => {
+    const ed = document.getElementById('promptEditor');
+    const ta = document.getElementById('promptText');
+    const head = document.getElementById('promptHead');
+    if (ed.classList.contains('hidden')) ta.value = promptList().join('\n');
+    if (head) head.textContent = `话术库（共 ${promptList().length} 条，一行一条，可用 {name} / {seat} 占位）`;
+    ed.classList.toggle('hidden');
+  });
+  const savePromptsBtn = document.getElementById('btnSavePrompts');
+  if (savePromptsBtn) savePromptsBtn.addEventListener('click', () => {
+    const ta = document.getElementById('promptText');
+    const list = String(ta.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+    if (!list.length) { alert('至少保留一条话术'); return; }
+    state.prompts = list;
+    const head = document.getElementById('promptHead');
+    if (head) head.textContent = `话术库（共 ${list.length} 条，一行一条，可用 {name} / {seat} 占位）`;
+    addLog(`💬 话术库已更新（${list.length} 条）`);
+    save();
+    renderNightOrder();
+    renderPromptSelect();
+    showFeedback(feedback, '话术库已保存', true);
+  });
+  const resetPromptsBtn = document.getElementById('btnResetPrompts');
+  if (resetPromptsBtn) resetPromptsBtn.addEventListener('click', () => {
+    if (!confirm('恢复默认话术库？自定义的内容会丢失。')) return;
+    state.prompts = null;
+    document.getElementById('promptText').value = promptList().join('\n');
+    save();
+    renderNightOrder();
+    renderPromptSelect();
+  });
+
+  /* 私信面板的快捷话术下拉 */
+  document.getElementById('dmPromptSel').addEventListener('change', (e) => {
+    const val = e.target.value;
+    e.target.value = '';
+    if (!val) return;
+    const seat = Number(document.getElementById('dmMsgSeat').value) || 1;
+    const text = fillPrompt(promptList()[Number(val)] || '', seat);
+    document.getElementById('dmMsgText').value = text;
+    document.getElementById('dmMsgText').focus();
   });
 
   document.getElementById('btnAddNote').addEventListener('click', () => {
@@ -2088,6 +2623,15 @@ document.addEventListener('DOMContentLoaded', function () {
       applyPendingAction(a, extraResult, offChk ? offChk.checked : undefined);
       pendingActions.splice(i, 1);
       dmChannel.send('action_result', { status: 'approved', id: a.id, playerId: a.playerId, seatId: a.seatId });
+      /* 按夜晚顺序自动轮到下一位 */
+      if (Number(state.turnSeat) === Number(a.seatId) + 1) {
+        const nextSeat = nextNightSeat(Number(a.seatId) + 1);
+        state.turnSeat = nextSeat || null;
+        if (nextSeat) {
+          const np = playerBySeatIdx(nextSeat - 1);
+          addLog(`▶ 自动轮到 ${np ? np.name : ('座位 ' + nextSeat)}`);
+        }
+      }
       render();
       broadcastPublicState();
       return;
@@ -2212,3 +2756,19 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

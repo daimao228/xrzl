@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -103,6 +103,18 @@ button.primary { background:linear-gradient(180deg,#c9a227,#a07f1c); color:#1712
 .hidden { display:none; }
 .room-pill { display:inline-block; font-size:11px; color:#7a705f; background:rgba(255,255,255,.9);
   border:1px solid rgba(94,78,58,.25); border-radius:20px; padding:3px 10px; }
+
+/* ---------- 白天 / 夜晚 色调 ---------- */
+html[data-phase="day"] body {
+  background:
+    linear-gradient(rgba(255,228,180,.30), rgba(255,208,145,.44)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+html[data-phase="night"] body {
+  background:
+    linear-gradient(rgba(10,8,14,.14), rgba(10,8,14,.32)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
 </style>
 </head>
 <body>
@@ -242,6 +254,7 @@ button.primary { background:linear-gradient(180deg,#c9a227,#a07f1c); color:#1712
 
   function renderAll() {
     if (!grimoire) return;
+    try { document.documentElement.dataset.phase = grimoire.phase === 'day' ? 'day' : 'night'; } catch (e) {}
     document.getElementById('syncInfo').textContent =
       `第 ${grimoire.currentNight} 夜 · ${grimoire.phase === 'day' ? '白天' : '夜晚'} · 只读`;
 

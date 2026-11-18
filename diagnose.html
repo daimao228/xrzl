@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>连接诊断 · 血染钟楼</title>
+<style>
+  body { font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif; margin:0; padding:16px;
+         background:#f5efe4; color:#241d2b; font-size:14px; }
+  h1 { font-size:16px; margin:0 0 10px; color:#96700f; letter-spacing:2px; }
+  .box { max-width:760px; margin:0 auto; }
+  pre { background:#fff; border:1px solid rgba(94,78,58,.25); border-radius:10px; padding:12px;
+        font-size:12px; line-height:1.65; white-space:pre-wrap; word-break:break-all; }
+  .ok { color:#2e7d5b; font-weight:700; }
+  .bad { color:#b03a3a; font-weight:700; }
+  .warn { color:#a87c14; font-weight:700; }
+  button { margin-top:10px; padding:8px 14px; border-radius:8px; border:1px solid rgba(94,78,58,.3);
+           background:#fff; font-family:inherit; font-size:13px; cursor:pointer; }
+  .verdict { margin-top:12px; padding:10px 12px; border-radius:10px; background:#fff;
+             border:1px solid rgba(94,78,58,.25); font-size:13px; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>🩸 连接诊断</h1>
+  <pre id="out">正在检测…</pre>
+  <button id="btnCopy">复制结果</button>
+  <div class="verdict" id="verdict"></div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script>
+(function () {
+  const outEl = document.getElementById('out');
+  const lines = [];
+
+  const cfg = (window.SUPABASE_CONFIG || {});
+  const url = String(cfg.url || '').replace(/\/+$/, '');
+  const key = String(cfg.key || '');
+  const pageHttp = /^https?:/i.test(location.href);
+  let sameOriginOk = null;
+  let directOk = null;
+
+  async function timed(label, fn) {
+    const t0 = performance.now();
+    try {
+      const r = await fn();
+      const ms = Math.round(performance.now() - t0);
+      const text = await r.text();
+      lines.push(`${label}: HTTP ${r.status} · ${ms}ms`);
+      lines.push('  返回: ' + text.slice(0, 160).replace(/\n/g, ' '));
+      return { ok: r.ok, status: r.status, text, ms };
+    } catch (e) {
+      const ms = Math.round(performance.now() - t0);
+      lines.push(`${label}: ❌ 失败 · ${ms}ms · ${e && e.message}`);
+      return { ok: false, error: e && e.message, ms };
+    }
+  }
+
+  (async () => {
+    lines.length = 0;
+    lines.push('页面地址: ' + location.href);
+    lines.push('页面协议: ' + (pageHttp ? 'http(s)（正常网页）' : 'file://（本地文件）'));
+    lines.push('Supabase: ' + (url || '（未配置！）'));
+    lines.push('proxy 配置: ' + JSON.stringify(cfg.proxy));
+    lines.push('transport: ' + JSON.stringify(cfg.transport));
+    lines.push('');
+    outEl.textContent = lines.join('\n');
+    if (!url || !key) {
+      document.getElementById('verdict').innerHTML =
+        '<span class="bad">配置为空</span>：请确认 supabase-config.js 和这个页面在同一目录，并且已填 url / key。';
+      return;
+    }
+
+    const h = { apikey: key, Authorization: 'Bearer ' + key, 'content-type': 'application/json' };
+
+    /* ---- A. 同域代理（只有 http(s) 页面才有意义）---- */
+    if (pageHttp) {
+      lines.push('【A】同域代理 /rest/v1');
+      const a = await timed('  GET /rest/v1/bg_messages', () =>
+        fetch('/rest/v1/bg_messages?select=id&order=id.desc&limit=1', { headers: h }));
+      sameOriginOk = a.ok;
+      const b = await timed('  POST /rest/v1/bg_messages', () =>
+        fetch('/rest/v1/bg_messages', { method: 'POST',
+          headers: Object.assign({}, h, { Prefer: 'return=minimal' }),
+          body: JSON.stringify([{ room: 'diag', event: 'ping', payload: {}, sender: 'diag' }]) }));
+      sameOriginOk = sameOriginOk && b.ok;
+      lines.push('');
+    } else {
+      lines.push('【A】跳过（file:// 页面不走同域代理）');
+      lines.push('');
+    }
+
+    /* ---- B. 直连 Supabase ---- */
+    lines.push('【B】直连 ' + url);
+    const c = await timed('  GET /rest/v1/bg_messages', () =>
+      fetch(url + '/rest/v1/bg_messages?select=id&order=id.desc&limit=1', { headers: h }));
+    const d = await timed('  POST /rest/v1/bg_messages', () =>
+      fetch(url + '/rest/v1/bg_messages', { method: 'POST',
+        headers: Object.assign({}, h, { Prefer: 'return=minimal' }),
+        body: JSON.stringify([{ room: 'diag', event: 'ping', payload: {}, sender: 'diag' }]) }));
+    directOk = c.ok && d.ok;
+    lines.push('');
+
+    /* ---- C. 轮询读回刚才写的消息 ---- */
+    if (directOk || sameOriginOk) {
+      lines.push('【C】读回测试消息');
+      const base = directOk ? url + '/rest/v1/bg_messages' : '/rest/v1/bg_messages';
+      await timed('  GET room=diag 最新 3 条', () =>
+        fetch(base + '?select=id,event,room&room=eq.diag&order=id.desc&limit=3', { headers: h }));
+      lines.push('');
+    }
+
+    outEl.textContent = lines.join('\n');
+
+    /* ---- 结论 ---- */
+    const v = document.getElementById('verdict');
+    if (sameOriginOk && directOk) {
+      v.innerHTML = '<span class="ok">✅ 两条路都通</span>：网络和配置没问题。<br>' +
+        '如果游戏里还是收不到消息，问题在 <b>DM 端没有响应</b>（DM 页面没开、不在同一房间、或它自己连不上）。';
+    } else if (directOk) {
+      v.innerHTML = '<span class="ok">✅ 直连可用，同域代理不可用</span>：本地预览没问题；' +
+        '放到线上时如果 <code>/rest/v1</code> 走的是代理（帽子云），记得检查反向代理规则。';
+    } else if (sameOriginOk) {
+      v.innerHTML = '<span class="ok">✅ 同域代理可用</span>，但直连被挡——线上部署正常，file:// 预览不能直连。';
+    } else {
+      v.innerHTML = '<span class="bad">❌ 两条路都不通</span>：可能是网络（运营商屏蔽 supabase）、' +
+        'key 填错、或 Supabase 项目暂停（免费项目闲置 7 天会睡）。先去 Supabase 后台看项目是不是绿色的 Healthy。';
+    }
+  })();
+
+  document.getElementById('btnCopy').addEventListener('click', () => {
+    const t = outEl.textContent + '\n\n' + document.getElementById('verdict').textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(
+      () => { document.getElementById('btnCopy').textContent = '已复制'; },
+      () => { prompt('手动复制：', t); }
+    );
+    else prompt('手动复制：', t);
+  });
+})();
+</script>
+</body>
+</html>

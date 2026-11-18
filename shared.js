@@ -20,7 +20,7 @@ const ROLES = {
   recluse:       { name:'隐士',       team:'outsider',  night:'passive', ability:'你可能被登记为邪恶或爪牙/恶魔。', action:'none', interaction:'none' },
   saint:         { name:'圣徒',       team:'outsider',  night:'passive', ability:'若你被处决，邪恶阵营胜利。', action:'none', interaction:'none' },
 
-  poisoner:      { name:'投毒者',     team:'minion',    night:'other', ability:'每夜：选择一名玩家，其本夜与明天白天中毒。', action:'poison', interaction:'target', targetCount:1 },
+  poisoner:      { name:'投毒者',     team:'minion',    night:'both',  ability:'每夜：选择一名玩家，其本夜与明天白天中毒。', action:'poison', interaction:'target', targetCount:1 },
   spy:           { name:'间谍',       team:'minion',    night:'both',  ability:'每夜：可查看魔典。你可能被登记为镇民或外来者。', action:'spy', interaction:'passive' },
   baron:         { name:'男爵',       team:'minion',    night:'passive', ability:'游戏开始时：额外两名外来者加入游戏。', action:'none', interaction:'none' },
   scarlet_woman: { name:'红唇女',     team:'minion',    night:'passive', ability:'若恶魔死亡时你存活且存活玩家≥5，你变成恶魔。', action:'none', interaction:'none' },
@@ -182,7 +182,8 @@ function buildPublicState(state) {
       id: p.id, name: p.name, alive: p.alive, hasRole: !!p.role, marks: [...p.marks]
     })),
     taken: (state.accounts || []).map(a => a.seatId),
-    night: state.night
+    night: state.night,
+    turnSeat: state.turnSeat || null   // 夜晚顺序：当前轮到哪个座位（null = 不限制）
   };
 }
 
@@ -246,15 +247,22 @@ function switchRoom(newRoom) {
 const RT_STATE = { mode: '未连接', joined: false, err: '', room: '' };
 
 /* REST 基地址：配了 proxy 且页面是 http(s) 时走同域代理，绕开被屏蔽的 supabase 域名 */
+let _sameOriginFallback = false;   // 同域代理不可用时（例如本地双击 html 预览）自动改直连
+
+function directBase() { return String(RT_CFG.url || '').replace(/\/+$/, ''); }
+
 function restBase() {
   const raw = String(RT_CFG.proxy || '');
-  // '/' 或 'origin' = 直接把 /rest/v1/... 当成同域路径（帽子云这类按路径原样转发的网关）
-  if (raw === '/' || raw.toLowerCase() === 'origin') return '';
-  const p = raw.replace(/\/+$/, '');
   const pageIsHttp = /^https?:/i.test(String(location.href));
+  // '/' 或 'origin' = 直接把 /rest/v1/... 当成同域路径（帽子云这类按路径原样转发的网关）
+  if (raw === '/' || raw.toLowerCase() === 'origin') {
+    if (!pageIsHttp) return directBase();            // file:// 打开 → 直连
+    return _sameOriginFallback ? directBase() : '';
+  }
+  const p = raw.replace(/\/+$/, '');
   if (p && /^https?:\/\//i.test(p)) return p;        // 绝对地址的代理
   if (p && pageIsHttp) return p;                     // 同域相对代理，如 /sb
-  return String(RT_CFG.url || '').replace(/\/+$/, '');
+  return directBase();
 }
 
 let _statusEl = null;
@@ -493,7 +501,7 @@ try {
    需要先在 Supabase 里建好 bg_messages 表（见 README-supabase.md）
    ================================================================== */
 function openPollChannel(room, handler) {
-  const base = restBase() + '/rest/v1/bg_messages';
+  let base = restBase() + '/rest/v1/bg_messages';
   const key = String(RT_CFG.key);
   const headers = { 'apikey': key, 'Authorization': 'Bearer ' + key, 'content-type': 'application/json' };
   const clientId = 'c_' + Math.random().toString(36).slice(2, 10);
@@ -538,6 +546,18 @@ function openPollChannel(room, handler) {
         fetch(base + '?created_at=lt.' + cut, { method: 'DELETE', headers: headers }).catch(() => {});
       }, 10 * 60 * 1000);
     } catch (e) {
+      /* 同域代理不可用（本地 http 预览、或网关规则没配好）→ 自动改直连 */
+      const rawProxy = String(RT_CFG.proxy || '');
+      const pageIsHttp = /^https?:/i.test(String(location.href));
+      if (!_sameOriginFallback && pageIsHttp &&
+          (rawProxy === '/' || rawProxy.toLowerCase() === 'origin')) {
+        _sameOriginFallback = true;
+        base = directBase() + '/rest/v1/bg_messages';
+        setConnStatus('同域代理不可用，已改为直连 Supabase', 'rgba(180,140,40,.92)');
+        console.warn('[poll] 同域代理不可用，切换为直连');
+        if (!closed) setTimeout(init, 300);
+        return;
+      }
       RT_STATE.joined = false;
       RT_STATE.err = e.message;
       setConnStatus('轮询启动失败: ' + e.message, 'rgba(160,60,60,.92)');
@@ -546,14 +566,27 @@ function openPollChannel(room, handler) {
     }
   }
 
+  /* 轮询节流：
+     · 正常 2 秒一次
+     · 页面在后台/锁屏时降到 6 秒一次（不能完全停——否则 DM 藏在后台就收不到消息了）
+     · 连续 60 秒没有收发消息 → 降到 3 秒一次；一有动静马上恢复
+     · 回到前台立刻补拉一次 */
+  const POLL_FAST = 2000;
+  const POLL_SLOW = 3000;
+  const POLL_HIDDEN = 6000;
+  const POLL_IDLE_AFTER = 60000;
+  let lastActivity = Date.now();
+
   async function loop() {
     if (closed) return;
+    const hidden = (typeof document !== 'undefined' && document.hidden);
     try {
       const url = base + '?select=id,event,payload,sender&room=eq.' + encodeURIComponent(room) +
         '&id=gt.' + lastId + '&order=id.asc&limit=200';
       const r = await fetch(url, { headers: headers });
       if (r.ok) {
         const rows = await r.json();
+        if (rows.length) lastActivity = Date.now();
         for (const row of rows) {
           lastId = Math.max(lastId, Number(row.id));
           if (row.sender === clientId) continue;
@@ -561,13 +594,16 @@ function openPollChannel(room, handler) {
         }
       }
     } catch (e) { /* 网络抖动，下一轮再试 */ }
-    if (!closed) timer = setTimeout(loop, 1200);
+    const idle = Date.now() - lastActivity > POLL_IDLE_AFTER;
+    const delay = hidden ? POLL_HIDDEN : (idle ? POLL_SLOW : POLL_FAST);
+    if (!closed) timer = setTimeout(loop, delay);
   }
 
   /* 手机回到前台时立刻补拉一次，不用等定时器 */
   document.addEventListener('visibilitychange', () => {
     if (closed || !inited) return;
     if (document.visibilityState === 'visible') {
+      lastActivity = Date.now();
       clearTimeout(timer);
       loop();
     }
@@ -577,6 +613,7 @@ function openPollChannel(room, handler) {
 
   return {
     send(type, payload) {
+      lastActivity = Date.now();   // 刚发过消息 → 接下来保持快轮询，别再降速
       if (!inited) { if (queue.length < 60) queue.push([type, payload]); return; }
       post(type, payload);
     },
