@@ -1,0 +1,318 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>血染钟楼 · 旁观（只读）</title>
+<style>
+:root {
+  --bg:#f5efe4; --text:#241d2b; --muted:#6b6270; --gold:#b8860b;
+  --line:rgba(94,78,58,.22);
+  --townsfolk:#2f6fb0; --outsider:#2e7d5b; --minion:#b3661c; --demon:#a02c2c;
+}
+html { background: var(--bg); }
+body {
+  margin:0; padding:18px 14px 40px; min-height:100vh; font-size:14px; color:#efe7d8;
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:
+    linear-gradient(rgba(10,8,14,.20), rgba(10,8,14,.48)),
+    url("assets/bg.jpg") center/cover no-repeat fixed;
+}
+.wrap { max-width:860px; margin:0 auto; }
+h1 { font-family:"Songti SC","STSong",Georgia,serif; font-size:18px; letter-spacing:5px; text-align:center;
+  color:#e8c65c; margin:0 0 6px; text-shadow:0 0 18px rgba(232,198,92,.35); }
+.sub { text-align:center; font-size:11px; letter-spacing:3px; color:#9b9282; margin-bottom:16px; }
+.panel {
+  position:relative; margin-bottom:14px; padding:14px 16px; border-radius:14px;
+  background: rgba(255,255,255,.82); border:1px solid var(--line); color:var(--text);
+  box-shadow: 0 14px 34px rgba(70,50,25,.16), inset 0 1px 0 rgba(255,255,255,.7);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.panel::before { content:''; position:absolute; left:0; top:0; width:26px; height:26px;
+  background: url("assets/corner.svg") left top/contain no-repeat; opacity:.5; pointer-events:none; }
+.panel::after { content:''; position:absolute; right:0; bottom:0; width:26px; height:26px;
+  background: url("assets/corner.svg") left top/contain no-repeat; opacity:.5; transform:rotate(180deg); pointer-events:none; }
+.ptitle { font-size:11px; letter-spacing:2px; color:#7a6b52; font-weight:700; margin-bottom:10px; }
+.ptitle::before { content:''; display:inline-block; width:22px; height:11px; margin-right:6px; vertical-align:-1px;
+  background: url("assets/chapter.svg") left center/contain no-repeat; opacity:.8; }
+label { display:block; font-size:11px; color:#7a705f; letter-spacing:1px; margin-bottom:5px; }
+input, button { font-family:inherit; font-size:14px; padding:8px 11px; border-radius:9px;
+  border:1px solid rgba(94,78,58,.25); background:rgba(255,255,255,.92); color:#241d2b; }
+input:focus { outline:none; border-color:rgba(184,134,11,.7); box-shadow:0 0 0 2px rgba(184,134,11,.14); }
+button { cursor:pointer; }
+button:hover { border-color:rgba(184,134,11,.75); color:#96700f; }
+button.primary { background:linear-gradient(180deg,#c9a227,#a07f1c); color:#17120a; font-weight:700; border-color:#a8841a; }
+.row { margin-bottom:12px; }
+.msg { font-size:12px; margin-top:8px; color:#b03a3a; min-height:16px; }
+.tip { font-size:11px; line-height:1.6; color:#7a705f; margin-top:6px; }
+
+/* 圆桌 */
+.stage-wrap { display:flex; justify-content:center; }
+.stage { position:relative; width:100%; max-width:520px; aspect-ratio:1/1; }
+@media (max-width:760px) {
+  .wrap { padding:0; }
+  body { padding:12px 6px 30px; }
+  .panel { padding:12px 8px; border-radius:12px; }
+  .stage-wrap { margin:0 -4px; }
+  .stage { max-width:min(96vw, 560px); }
+  .pseat .ps-seatno { font-size:8px; left:4px; top:1px; }
+}
+.stage::before { content:''; position:absolute; inset:0; pointer-events:none; opacity:.30;
+  background:url("assets/runes.svg") center/contain no-repeat; animation: spin 320s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.center-night { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  text-align:center; pointer-events:none; z-index:1; }
+.cn-label { font-size:10px; letter-spacing:3px; color:#7a6b52; }
+.cn-num { font-family:Georgia,serif; font-size:36px; font-weight:800; line-height:1; color:#7d1a1f;
+  text-shadow:0 2px 10px rgba(255,246,236,.9); }
+.cn-sub { font-size:10px; color:#7a705f; }
+.pseat { position:absolute; width:var(--seat-w, 104px); transform:translate(-50%,-50%); z-index:2; text-align:center;
+  padding: calc(var(--seat-w,104px)*0.06) calc(var(--seat-w,104px)*0.05) calc(var(--seat-w,104px)*0.05);
+  border-radius:10px; border:1px solid rgba(94,78,58,.2);
+  background:rgba(255,255,255,.92); box-shadow:0 5px 14px rgba(70,50,25,.16); }
+.pseat .ps-seatno { position:absolute; top:2px; left:5px; font-size:9px; line-height:1;
+  color:#8d8578; letter-spacing:1px; }
+.pseat .avatar { width:calc(var(--seat-w,104px)*0.46); height:calc(var(--seat-w,104px)*0.46);
+  margin:0 auto calc(var(--seat-w,104px)*0.05) auto; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; border:2px solid rgba(184,134,11,.4);
+  background:radial-gradient(circle at 50% 30%, #fffdf8, #ecdfc4); }
+.pseat .avatar .role-ic { width:80%; height:80%; color:#5a4a2a; }
+.pseat .ps-name { font-size:clamp(9px, calc(var(--seat-w,104px)*0.12), 12px); font-weight:700;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pseat .ps-role { font-size:clamp(8px, calc(var(--seat-w,104px)*0.105), 11px); margin-top:1px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pseat .ps-marks { font-size:clamp(7px, calc(var(--seat-w,104px)*0.09), 9px); color:#b03a3a; margin-top:1px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pseat.dead { opacity:.45; filter:grayscale(.5); }
+.pseat.dead .ps-name { text-decoration:line-through; }
+.role-ic { position:relative; display:inline-flex; width:1em; height:1em; vertical-align:-.14em; flex-shrink:0; }
+.role-ico { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.role-img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0; transition:opacity .15s; }
+.role-ic.has-img .role-img { opacity:1; }
+.role-ic.has-img .role-ico { visibility:hidden; }
+
+.tags { display:flex; flex-wrap:wrap; gap:6px; font-size:11px; }
+.tag { padding:2px 9px; border-radius:12px; background:rgba(255,255,255,.75); border:1px solid rgba(94,78,58,.2); }
+.log { max-height:260px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; font-size:12px; }
+.log-item { padding:4px 8px; background:rgba(255,255,255,.7); border-radius:5px; border:1px solid rgba(94,78,58,.14); }
+.log-time { color:#96700f; font-size:10px; margin-right:6px; }
+.pending-item { font-size:12px; padding:6px 9px; margin-bottom:6px; border-radius:6px;
+  background:rgba(255,255,255,.75); border-left:3px solid rgba(184,134,11,.6); }
+.ro-badge { display:inline-block; font-size:10px; letter-spacing:2px; color:#8a2c2c; border:1px solid rgba(160,44,44,.4);
+  border-radius:20px; padding:1px 8px; margin-left:6px; vertical-align:2px; }
+.hidden { display:none; }
+.room-pill { display:inline-block; font-size:11px; color:#7a705f; background:rgba(255,255,255,.9);
+  border:1px solid rgba(94,78,58,.25); border-radius:20px; padding:3px 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🩸 血染钟楼 · 旁观</h1>
+  <div class="sub">OBSERVER · 只读 <span class="ro-badge">不可操作</span></div>
+
+  <div id="joinBox" class="panel">
+    <div class="ptitle">进入旁观</div>
+    <div class="row">
+      <label>房间号</label>
+      <input id="roomInput" type="text" maxlength="32" spellcheck="false" placeholder="例如 5h4z">
+    </div>
+    <div class="row">
+      <label>旁观密码（向说书人索取）</label>
+      <input id="pwInput" type="text" maxlength="20" spellcheck="false" placeholder="DM 提供的密码">
+    </div>
+    <button id="btnJoin" class="primary">进入</button>
+    <div id="joinMsg" class="msg"></div>
+    <div class="tip">旁观视角只能看，不能点——所有操作必须由说书人完成。密码由 DM 开启后生成。</div>
+  </div>
+
+  <div id="viewBox" class="hidden">
+    <div class="panel" style="padding:10px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:#6b6270;">
+        <span>房间 <span class="room-pill" id="roomLabel">-</span></span>
+        <span id="syncInfo">等待数据…</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">圆 桌（魔典）</div>
+      <div class="stage-wrap"><div class="stage" id="stage"></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">角 色 池 与 伪 装</div>
+      <div class="tags" id="poolTags"></div>
+      <div class="tags" id="bluffTags" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">待 确 认 行 动</div>
+      <div id="pendingBox"></div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">操 作 日 志</div>
+      <div class="log" id="logBox"></div>
+    </div>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script src="shared.js"></script>
+<script>
+(function () {
+  const KEY = 'botc_spectator';
+  let room = getRoomCode();
+  let password = '';
+  let grimoire = null;
+  let joined = false;
+  const clientId = 'sp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+
+  const roomInput = document.getElementById('roomInput');
+  const pwInput = document.getElementById('pwInput');
+  roomInput.value = room;
+
+  const ch = openChannel((msg) => {
+    if (!msg || !msg.type) return;
+
+    if (msg.type === 'grimoire') {
+      if (!msg.payload || msg.payload.clientId !== clientId) return;
+      grimoire = msg.payload;
+      joined = true;
+      document.getElementById('joinBox').classList.add('hidden');
+      document.getElementById('viewBox').classList.remove('hidden');
+      document.getElementById('roomLabel').textContent = room;
+      try { localStorage.setItem(KEY, JSON.stringify({ room: room, password: password })); } catch (e) {}
+      renderAll();
+    }
+    else if (msg.type === 'spectator_denied') {
+      if (!msg.payload || msg.payload.clientId !== clientId) return;
+      joined = false;
+      showMsg((msg.payload && msg.payload.reason) || '无法进入旁观');
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    }
+    else if (msg.type === '__connected__') {
+      if (password) ch.send('spectator_join', { password: password, clientId: clientId });
+    }
+  });
+
+  function showMsg(t) { document.getElementById('joinMsg').textContent = t; }
+
+  document.getElementById('btnJoin').addEventListener('click', () => {
+    const r = String(roomInput.value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+    const p = String(pwInput.value || '').trim();
+    if (!r) return showMsg('请输入房间号');
+    if (!p) return showMsg('请输入旁观密码');
+    if (r !== room) {
+      try { localStorage.setItem(KEY, JSON.stringify({ room: r, password: p })); } catch (e) {}
+      switchRoom(r);
+      return;
+    }
+    password = p;
+    showMsg('正在验证…');
+    ch.send('spectator_join', { password: p, clientId: clientId });
+  });
+
+  /* ---------- 渲染 ---------- */
+  function computeSeatW(stage, n) {
+    const W = stage.clientWidth, H = stage.clientHeight;
+    const S = Math.min(W || 0, H || 0);
+    if (!S || !n) return 104;
+    const R = S * 0.44;
+    const ideal = (2 * Math.PI * R) / n * 0.90;
+    return Math.round(Math.max(42, Math.min(110, ideal)));
+  }
+
+  function layoutSeats() {
+    const stage = document.getElementById('stage');
+    if (!stage) return;
+    const cards = stage.querySelectorAll('.pseat');
+    const n = cards.length;
+    if (!n) return;
+    const W = stage.clientWidth, H = stage.clientHeight;
+    if (!W || !H) return;
+    const cw = cards[0].offsetWidth || 104;
+    const chh = cards[0].offsetHeight || 96;
+    const radius = Math.max(10, Math.min(W, H) / 2 - Math.max(cw, chh) / 2 - 2);
+    cards.forEach((el, i) => {
+      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+      el.style.left = (W / 2 + radius * Math.cos(angle)) + 'px';
+      el.style.top = (H / 2 + radius * Math.sin(angle)) + 'px';
+    });
+  }
+
+  function renderAll() {
+    if (!grimoire) return;
+    document.getElementById('syncInfo').textContent =
+      `第 ${grimoire.currentNight} 夜 · ${grimoire.phase === 'day' ? '白天' : '夜晚'} · 只读`;
+
+    const stage = document.getElementById('stage');
+    const seatW = computeSeatW(stage, (grimoire.players || []).length);
+    stage.style.setProperty('--seat-w', seatW + 'px');
+    stage.innerHTML = '';
+    const isDay = grimoire.phase === 'day';
+    const center = document.createElement('div');
+    center.className = 'center-night';
+    center.innerHTML = `
+      <div class="cn-label"><img src="assets/${isDay ? 'sun' : 'moon'}.svg" style="width:14px;height:14px;vertical-align:-2px"> ${isDay ? '白 天' : '夜 晚'}</div>
+      <div class="cn-num">${grimoire.currentNight}</div>
+      <div class="cn-sub">${isDay ? '白天讨论与投票' : '夜晚行动中'}</div>`;
+    stage.appendChild(center);
+
+    (grimoire.players || []).forEach((p) => {
+      const el = document.createElement('div');
+      el.className = 'pseat' + (p.alive ? '' : ' dead');
+      const teamColor = p.team ? `var(--${p.team})` : 'rgba(94,78,58,.4)';
+      el.style.borderTopColor = teamColor;
+      el.style.borderTopWidth = '3px';
+      const ico = p.role ? roleIcon(p.role, 'avatar') : '<span style="font-size:20px;color:#b9ae97">?</span>';
+      const marks = (p.marks || []).join(' ');
+      el.innerHTML = `
+        <span class="ps-seatno">${p.seat}</span>
+        <div class="avatar">${ico}</div>
+        <div class="ps-name">${escapeHtml(p.name)}</div>
+        <div class="ps-role" style="color:${teamColor}">${p.roleName ? escapeHtml(p.roleName) : '未分配'}</div>
+        ${p.beliefName ? `<div class="ps-role" style="color:#7d4bb0">假·${escapeHtml(p.beliefName)}</div>` : ''}
+        ${marks ? `<div class="ps-marks">${escapeHtml(marks)}</div>` : ''}`;
+      stage.appendChild(el);
+    });
+    requestAnimationFrame(layoutSeats);
+
+    document.getElementById('poolTags').innerHTML =
+      (grimoire.pool && grimoire.pool.length)
+        ? grimoire.pool.map(n => `<span class="tag">${escapeHtml(n)}</span>`).join('')
+        : '<span class="tag">未设置</span>';
+    document.getElementById('bluffTags').innerHTML = (grimoire.bluff && grimoire.bluff.length)
+      ? '<span class="tag" style="border-color:rgba(125,75,176,.45);color:#7d4bb0">恶魔伪装：</span>' +
+        grimoire.bluff.map(n => `<span class="tag">${escapeHtml(n)}</span>`).join('')
+      : '';
+
+    const pb = document.getElementById('pendingBox');
+    pb.innerHTML = (grimoire.pending && grimoire.pending.length)
+      ? grimoire.pending.map(a => `<div class="pending-item"><b>${escapeHtml(a.name)}</b>
+          （${escapeHtml(a.roleName || a.actionType)}）→ ${escapeHtml((a.targets || []).join('、'))}</div>`).join('')
+      : '<div class="tip">暂无待确认行动</div>';
+
+    document.getElementById('logBox').innerHTML = (grimoire.log && grimoire.log.length)
+      ? grimoire.log.slice().reverse().map(l =>
+          `<div class="log-item"><span class="log-time">${escapeHtml(l.time || '')}</span>${escapeHtml(l.text)}</div>`).join('')
+      : '<div class="tip">暂无日志</div>';
+  }
+
+  window.addEventListener('resize', layoutSeats);
+
+  /* 每 12 秒重新校验：DM 刷新页面或掉线后能自动恢复 */
+  setInterval(() => { if (password) ch.send('spectator_join', { password: password, clientId: clientId }); }, 12000);
+
+  /* 自动续连：记住的密码直接尝试 */
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (saved && saved.room === room && saved.password) {
+      pwInput.value = saved.password;
+      password = saved.password;
+      ch.send('spectator_join', { password: saved.password, clientId: clientId });
+    }
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

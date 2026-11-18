@@ -1,0 +1,22 @@
+# ---- 忽略清单（推送到 Git 仓库时不该带上的东西）----
+# 临时文件
+._chk/
+._*.py
+._*.js
+_*.py
+_*.log
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+
+# 没在用的 Supabase Edge Function 草稿
+supabase/
+
+# 本地开发
+node_modules/

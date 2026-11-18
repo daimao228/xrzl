@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" color="#8a6b3d">
+  <path d="M0 20 H232 M368 20 H600"/>
+  <circle cx="240" cy="20" r="2.5" fill="currentColor" stroke="none"/>
+  <circle cx="360" cy="20" r="2.5" fill="currentColor" stroke="none"/>
+  <path d="M300 4 C302 15 305 18 316 20 C305 22 302 25 300 36 C298 25 295 22 284 20 C295 18 298 15 300 4 Z" fill="currentColor" stroke="none"/>
+  <polygon points="300,10 306,20 300,30 294,20" fill="#fff" stroke="none" opacity="0.55"/>
+  <path d="M262 20 L272 16 M262 20 L272 24 M338 20 L328 16 M338 20 L328 24"/>
+</svg>

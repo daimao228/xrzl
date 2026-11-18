@@ -1,0 +1,2214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>血染钟楼 · 说书人助手</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#ffffff; --panel:#f7f7f9; --panel2:#ffffff; --border:#e0e0e6;
+  --text:#1f1f27; --muted:#7a7a8c; --gold:#b8860b;
+  --townsfolk:#2c6cb0; --outsider:#2e8b57; --minion:#c46a1e; --demon:#b03030;
+  --bluff:#8e44ad; --ok:#2e8b57; --err:#c03030; --warn:#c98a1a;
+}
+body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 20px; background: #f2f2f5; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+h1 { font-size: 16px; letter-spacing: 1.5px; color: var(--gold); white-space: nowrap; }
+h1 small { color: var(--muted); font-size: 11px; letter-spacing: 0; margin-left: 8px; font-weight: 400; }
+.ctrl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+.room-pill { font-size: 12px; color: var(--muted); background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; cursor: pointer; transition: .15s; }
+.room-pill:hover { border-color: var(--gold); color: var(--gold); }
+.room-pill b { color: var(--gold); letter-spacing: 1px; }
+select, input, button { font-family: inherit; font-size: 13px; background: #ffffff; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; outline: none; }
+button { cursor: pointer; transition: .15s; }
+button:hover { border-color: var(--gold); color: var(--gold); }
+button.primary { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 700; }
+button.primary:hover { background: #d4a017; color: #fff; }
+button.danger { color: var(--err); border-color: #e0b0b0; }
+button.danger:hover { background: #fff5f5; }
+button.sm { padding: 3px 8px; font-size: 12px; }
+select:focus, input:focus { border-color: var(--gold); }
+
+main { display: grid; grid-template-columns: 1fr 400px; gap: 16px; padding: 16px 20px; align-items: start; }
+@media (max-width: 1080px) { main { grid-template-columns: 1fr; } }
+
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.panel h2 { font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing: 2px; }
+.comp { font-size: 11px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.comp b { font-weight: 700; }
+.comp .bad { color: var(--err); }
+.comp .ok  { color: var(--ok); }
+
+.pool-section { margin-bottom: 12px; }
+.pool-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+.pool-title { font-size: 11px; color: var(--gold); letter-spacing: 1.5px; font-weight: 700; }
+.pool-hint { font-size: 11px; color: var(--muted); }
+.pool-grid { display: flex; flex-direction: column; gap: 8px; }
+.pool-row { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.pool-label { font-size: 11px; color: var(--muted); width: 52px; flex-shrink: 0; padding-top: 5px; font-weight: 700; }
+.pool-chips { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; }
+.chip { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: #fff; border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: .15s; user-select: none; }
+.chip:hover { border-color: var(--gold); }
+.chip.on { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 700; }
+.chip[data-team="townsfolk"].on { background: var(--townsfolk); color:#fff; border-color:var(--townsfolk); }
+.chip[data-team="outsider"].on  { background: var(--outsider); color:#fff; border-color:var(--outsider); }
+.chip[data-team="minion"].on    { background: var(--minion); color:#fff; border-color:var(--minion); }
+.chip[data-team="demon"].on     { background: var(--demon); color:#fff; border-color:var(--demon); }
+.pool-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.pool-status { font-size: 11px; color: var(--muted); }
+.pool-status b { color: var(--text); }
+.pool-status .warn { color: var(--warn); }
+.pool-status .err  { color: var(--err); }
+.pool-status .good { color: var(--ok); }
+
+.bluff-section { margin-bottom: 12px; }
+.bluff-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px; }
+.bluff-title { font-size: 11px; color: var(--bluff); letter-spacing: 1.5px; font-weight: 700; }
+.bluff-hint { font-size: 11px; color: var(--muted); }
+.bluff-slots { display: flex; gap: 8px; flex-wrap: wrap; }
+.bluff-slot { flex: 1; min-width: 110px; display: flex; align-items: center; gap: 6px; background: #fff; border: 1px dashed #c9a9e0; border-radius: 8px; padding: 5px 8px; }
+.bluff-slot .slot-no { font-size: 10px; color: var(--bluff); font-weight: 700; flex-shrink: 0; }
+.bluff-slot select { flex: 1; min-width: 0; font-size: 12px; padding: 4px 6px; border-color: #e6d8f0; background: #fdfaff; }
+.bluff-slot select:focus { border-color: var(--bluff); }
+
+.stage-wrap { display: flex; justify-content: center; }
+.stage { position: relative; width: 100%; max-width: 780px; aspect-ratio: 1 / 1; margin: 0 auto; }
+.stage::before { content: ''; position: absolute; left: 50%; top: 50%; width: 58%; height: 58%; transform: translate(-50%,-50%); border-radius: 50%; border: 1px dashed #d0d0da; background: radial-gradient(circle, rgba(184,134,11,.04), transparent 70%); pointer-events: none; }
+.center-night { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); text-align: center; pointer-events: none; z-index: 1; user-select: none; }
+.center-night .cn-label { font-size: 11px; color: var(--muted); letter-spacing: 3px; margin-bottom: 4px; }
+.center-night .cn-num { font-size: 52px; font-weight: 800; line-height: 1; color: var(--gold); letter-spacing: 2px; text-shadow: 0 2px 12px rgba(184,134,11,.18); }
+.center-night .cn-sub { font-size: 11px; color: var(--muted); margin-top: 6px; letter-spacing: 1px; }
+
+.seat { position: absolute; width: 150px; transform: translate(-50%,-50%); background: #fff; border: 1px solid var(--border); border-top: 3px solid var(--border); border-radius: 9px; padding: 6px 7px 7px; transition: opacity .2s, border-color .15s, box-shadow .15s; user-select: none; z-index: 2; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.seat:hover { box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+.seat[data-team="townsfolk"] { border-top-color: var(--townsfolk); }
+.seat[data-team="outsider"]  { border-top-color: var(--outsider); }
+.seat[data-team="minion"]    { border-top-color: var(--minion); }
+.seat[data-team="demon"]     { border-top-color: var(--demon); }
+.seat.dead { opacity: .45; }
+.seat.dead .seat-name { text-decoration: line-through; }
+.seat-top { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; }
+.seat-no { font-size: 10px; color: var(--muted); background: #f0f0f4; border-radius: 4px; padding: 1px 5px; flex-shrink: 0; font-weight: 700; }
+.seat-name { flex: 1; min-width: 0; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: transparent; border: 1px solid transparent; border-radius: 4px; color: var(--text); padding: 1px 3px; font-family: inherit; }
+.seat-name:hover { border-color: var(--border); }
+.seat-name:focus { border-color: var(--gold); background: #fff; outline: none; }
+.death-btn { padding: 2px 5px; font-size: 12px; line-height: 1; background: transparent; border: 1px solid transparent; border-radius: 4px; flex-shrink: 0; }
+.death-btn:hover { background: #f0f0f4; }
+.seat-role { width: 100%; font-size: 11px; padding: 3px 5px; margin-bottom: 5px; }
+.seat-marks { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 4px; }
+.mark { flex: 1; min-width: 0; font-size: 10px; padding: 3px 2px; text-align: center; border-radius: 5px; background: #f5f5f8; border: 1px solid var(--border); color: var(--muted); line-height: 1.2; white-space: nowrap; overflow: hidden; }
+.mark.on { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 700; }
+.seat-actions { display: flex; gap: 3px; }
+.tell-role { flex: 1; font-size: 10px; padding: 3px 2px; border-radius: 5px; background: #eef4fb; border: 1px solid #c8d8ea; color: var(--townsfolk); }
+.tell-role:hover { background: #e2ecf8; }
+.release-seat { font-size: 10px; padding: 3px 6px; border-radius: 5px; background: #fff5f5; border: 1px solid #e0b0b0; color: var(--err); }
+.release-seat:hover { background: #ffe8e8; }
+
+.tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.tab { font-size: 12px; padding: 5px 14px; border-radius: 20px; background:#fff; }
+.tab.active { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 700; }
+.tab.active:hover { color: #fff; }
+#nightOrder { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.night-item { background: #fff; border-left: 3px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+.ni-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+.ni-role { font-size: 12px; font-weight: 700; }
+.ni-player { font-size: 11px; color: var(--muted); }
+.ni-ability { font-size: 11px; color: var(--muted); line-height: 1.45; }
+
+.night-log-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.night-log-title { font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing: 2px; }
+.night-log-tools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.night-log-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; }
+.night-log-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.nl-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.nl-day { font-size: 12px; font-weight: 700; color: var(--gold); }
+.nl-actions { display: flex; gap: 4px; }
+.nl-actions button { padding: 1px 6px; font-size: 11px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
+.nl-actions button:hover { color: var(--gold); border-color: var(--gold); }
+.nl-lines { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.nl-lines li { font-size: 12px; line-height: 1.5; padding: 3px 6px; border-left: 2px solid var(--border); background: #fbfbfd; border-radius: 3px; display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.nl-lines li .line-text { flex: 1; word-break: break-word; }
+.nl-lines li .del-line { padding: 0 4px; font-size: 10px; line-height: 1.4; background: transparent; border: none; color: var(--muted); cursor: pointer; }
+.nl-lines li .del-line:hover { color: var(--err); }
+.nl-lines li.tag-night  { border-left-color: var(--townsfolk); }
+.nl-lines li.tag-vote   { border-left-color: var(--demon); }
+.nl-lines li.tag-status { border-left-color: var(--warn); }
+.nl-lines li.tag-expire { border-left-color: #a0a0b0; color: var(--muted); }
+.nl-lines li.tag-dm     { border-left-color: var(--bluff); }
+.nl-empty { font-size: 11px; color: var(--muted); padding: 2px 0 0; }
+
+.vote-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+.vote-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
+.vote-field { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 130px; }
+.vote-field label { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+.vote-field select, .vote-field input { width: 100%; font-size: 12px; padding: 5px 8px; }
+.vote-players { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; max-height: 150px; overflow-y: auto; padding: 2px; }
+.vote-chip { font-size: 11px; padding: 4px 10px; border-radius: 12px; background: #f5f5f8; border: 1px solid var(--border); color: var(--muted); cursor: pointer; user-select: none; transition: .15s; }
+.vote-chip:hover { border-color: var(--gold); }
+.vote-chip.yes { background: var(--ok); color: #fff; border-color: var(--ok); font-weight: 700; }
+.vote-chip.dead { opacity: .5; text-decoration: line-through; }
+.vote-result { font-size: 12px; color: var(--muted); margin-bottom: 8px; line-height: 1.6; }
+.vote-result b { color: var(--text); }
+.vote-result .ok { color: var(--ok); font-weight: 700; }
+.vote-result .err { color: var(--err); font-weight: 700; }
+.vote-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.vote-feedback { font-size: 12px; color: var(--ok); margin-left: 4px; }
+.vote-history { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }
+
+.pending-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+.pending-item { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+.pending-info { font-size: 12px; line-height: 1.5; margin-bottom: 6px; }
+.pending-meta { font-size: 11px; color: var(--muted); }
+.pending-extra { margin-bottom: 6px; }
+.pending-extra label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+.pending-extra input { width: 100%; font-size: 12px; padding: 5px 8px; }
+.pending-extra input[type="checkbox"] { width: 14px; height: 14px; padding: 0; margin: 0; accent-color: #b8860b; flex-shrink: 0; }
+.pending-extra label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.pending-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.dm-msg-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+.dm-msg-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 6px; }
+.dm-msg-row .vote-field { flex: 1; min-width: 100px; }
+.dm-msg-row .vote-field.wide { flex: 2; min-width: 160px; }
+.dm-msg-history { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; }
+.dm-msg-item { font-size: 11px; padding: 4px 8px; background: #fbfbfd; border-left: 2px solid var(--bluff); border-radius: 3px; color: var(--muted); }
+.dm-msg-item b { color: var(--text); }
+
+.log { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.log-item { font-size: 12px; padding: 5px 8px; background: #fff; border-radius: 5px; line-height: 1.45; word-break: break-word; border: 1px solid var(--border); }
+.log-time { color: var(--gold); font-size: 10px; margin-right: 6px; }
+.log-input-row { display: flex; gap: 6px; }
+.log-input-row input { flex: 1; }
+.empty { font-size: 12px; color: var(--muted); text-align: center; padding: 16px 0; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: #cfcfd8; border-radius: 3px; }
+/* ============================================================
+   暗夜烛光主题（覆盖层：只改观感，不动结构）
+   ============================================================ */
+:root {
+  --bg:#2a2436; --panel:#352e43; --panel2:#3d3550; --border:#4f4667;
+  --text:#f4ede0; --muted:#c0b5a3; --gold:#e8c65c;
+  --townsfolk:#5b8fd6; --outsider:#4f9e77; --minion:#d1762f; --demon:#c0392b;
+  --bluff:#9b6bd1; --ok:#4f9e77; --err:#d14343; --warn:#d8a03a;
+}
+html { background: var(--bg); }
+body {
+  color: var(--text);
+  background:
+    radial-gradient(1100px 560px at 50% -8%, rgba(139,18,32,.20), transparent 62%),
+    radial-gradient(900px 500px at 104% 108%, rgba(212,175,55,.06), transparent 60%),
+    radial-gradient(700px 380px at -6% 82%, rgba(90,50,130,.10), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+h1 { font-family: "Songti SC", "STSong", Georgia, serif; letter-spacing: 4px; text-shadow: 0 0 20px rgba(212,175,55,.35); }
+h1 small { color: #9b9282; }
+
+header {
+  background: linear-gradient(180deg, rgba(60,51,75,.96), rgba(44,37,57,.94));
+  border-bottom: 1px solid #4f4667;
+  box-shadow: 0 1px 0 rgba(212,175,55,.16), 0 10px 28px rgba(0,0,0,.55);
+  backdrop-filter: blur(8px);
+}
+.room-pill { background:#352e43; border-color:#574d70; }
+.room-pill:hover { border-color: rgba(212,175,55,.7); }
+
+select, input, button { background:#302a3d; color:var(--text); border:1px solid #574d70; }
+select option { background:#352e43; color:var(--text); }
+input:focus, select:focus { border-color: rgba(212,175,55,.7); box-shadow: 0 0 0 2px rgba(212,175,55,.12); }
+button:hover { border-color: rgba(212,175,55,.7); color: var(--gold); }
+button.primary { background: linear-gradient(180deg,#c8a335,#8a6a16); color:#120f08; border-color:#c9a227;
+  box-shadow: 0 4px 16px rgba(212,175,55,.22); }
+button.primary:hover { background: linear-gradient(180deg,#e2bd48,#a07f1c); color:#0b0a06; }
+button.danger { color:#e07070; border-color:#4a2028; background: rgba(139,18,32,.10); }
+button.danger:hover { background: rgba(139,18,32,.22); border-color:#8b1220; color:#ff8f8f; }
+
+.panel { background: linear-gradient(180deg, rgba(66,57,82,.96), rgba(54,46,68,.96));
+  border: 1px solid #4f4667; border-radius: 12px; position: relative;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 14px 36px rgba(0,0,0,.42); }
+.panel::before { content:''; position:absolute; top:0; left:12px; right:12px; height:1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,.6), transparent); pointer-events:none; }
+.panel h2, .night-log-title { color:#b8ad96; }
+.pool-footer { border-top-color:#4f4667; }
+
+.chip, .tab, .vote-chip { background:#352e43; border-color:#574d70; color:var(--muted); }
+.chip:hover, .tab:hover, .vote-chip:hover { border-color: rgba(212,175,55,.6); color: var(--gold); }
+.tab.active { background: linear-gradient(180deg,#c8a335,#8a6a16); border-color:#c9a227; color:#120f08; }
+.chip.on { background: rgba(212,175,55,.9); color:#120f08; border-color:#c9a227; }
+.chip[data-team="townsfolk"].on { background: var(--townsfolk); color:#08121f; }
+.chip[data-team="outsider"].on  { background: var(--outsider); color:#06170f; }
+.chip[data-team="minion"].on    { background: var(--minion); color:#1d0d02; }
+.chip[data-team="demon"].on     { background: var(--demon); color:#fff2f0; }
+
+.bluff-slot { background: linear-gradient(180deg,#463e58,#2f2939); border:1px dashed rgba(155,107,209,.45); }
+.bluff-slot select { background:#352e43; border-color:#33243f; }
+
+.stage::before {
+  border: 1px dashed rgba(212,175,55,.28);
+  background: radial-gradient(circle, rgba(139,18,32,.20) 0%, rgba(212,175,55,.05) 46%, transparent 72%);
+  box-shadow: inset 0 0 90px rgba(139,18,32,.18);
+}
+.center-night .cn-num { font-family: Georgia, "Songti SC", serif; color: var(--gold); animation: candle 3.8s ease-in-out infinite; }
+.center-night .cn-label { color:#a89a78; }
+@keyframes candle {
+  0%,100% { text-shadow: 0 0 22px rgba(212,175,55,.55), 0 0 60px rgba(139,18,32,.45); }
+  50%     { text-shadow: 0 0 14px rgba(212,175,55,.35), 0 0 38px rgba(139,18,32,.30); }
+}
+
+.seat { background: linear-gradient(180deg,#463d58,#362f46); border:1px solid #574d70;
+  box-shadow: 0 6px 18px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
+  transition: opacity .2s, border-color .15s, box-shadow .15s, transform .15s; }
+.seat:hover { transform: translate(-50%,-50%) scale(1.03); border-color:#3a3450;
+  box-shadow: 0 12px 30px rgba(0,0,0,.62), 0 0 0 1px rgba(212,175,55,.30); }
+.seat[data-team="townsfolk"] { border-top-color: var(--townsfolk); }
+.seat[data-team="outsider"]  { border-top-color: var(--outsider); }
+.seat[data-team="minion"]    { border-top-color: var(--minion); }
+.seat[data-team="demon"]     { border-top-color: var(--demon); box-shadow: 0 6px 22px rgba(139,18,32,.35); }
+.seat-no { background:#463d58; color:#9c9482; }
+.seat-name { color: var(--text); }
+.seat-name:focus { background:#544a68; border-color: var(--gold); box-shadow:0 0 0 2px rgba(232,198,92,.15); }
+.death-btn:hover { background:#463d58; }
+.seat-role { background:#302a3d; }
+.mark { background:#39314a; border-color:#574d70; color:#8c8474; }
+.mark.on { background: linear-gradient(180deg,#c8a335,#8a6a16); color:#120f08; border-color:#c9a227; }
+.tell-role { background: rgba(91,143,214,.12); border-color: rgba(91,143,214,.38); color:#8fb8e8; }
+.tell-role:hover { background: rgba(91,143,214,.22); }
+.release-seat { background: rgba(192,57,43,.12); border-color: rgba(192,57,43,.38); color:#e0908a; }
+.release-seat:hover { background: rgba(192,57,43,.22); }
+
+.night-item { background:#352e43; border-left-color:#574d70; }
+.night-log-card, .vote-box, .pending-item, .dm-msg-box, .log-item { background:#352e43; border-color:#282338; }
+.nl-lines li, .dm-msg-item { background:#302a3d; border-left-color:#574d70; }
+.nl-lines li.tag-expire { color:#6f695c; }
+.nl-actions button { background:transparent; border-color:#574d70; color:var(--muted); }
+.vote-chip.yes { background: linear-gradient(180deg,#4f9e77,#35764f); color:#06170f; border-color:#4f9e77; }
+.vote-chip.dead { opacity:.45; }
+.dm-msg-item b { color: var(--text); }
+.pending-extra input[type="checkbox"] { accent-color: var(--gold); }
+.empty, .pool-status, .comp { color: var(--muted); }
+
+::-webkit-scrollbar-thumb { background:#574d70; }
+::-webkit-scrollbar-thumb:hover { background:#675d82; }
+input::placeholder, textarea::placeholder { color:#867c6a; }
+::selection { background: rgba(139,18,32,.45); color:#fff; }
+
+/* ---------- 花哨装饰层（全部来自素材库 SVG） ---------- */
+/* 四周暗角 */
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:1;
+  background: url("assets/vignette.svg") center/cover no-repeat;
+  opacity:.45;
+}
+/* 空气中的金色余烬 */
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:3; opacity:.5;
+  background-image:
+    radial-gradient(1.4px 1.4px at 12% 18%, rgba(212,175,55,.9), transparent 60%),
+    radial-gradient(1.2px 1.2px at 78% 32%, rgba(212,175,55,.7), transparent 60%),
+    radial-gradient(1.7px 1.7px at 44% 72%, rgba(224,120,90,.65), transparent 60%),
+    radial-gradient(1.1px 1.1px at 88% 84%, rgba(212,175,55,.7), transparent 60%),
+    radial-gradient(1.3px 1.3px at 26% 88%, rgba(212,175,55,.55), transparent 60%);
+  background-size: 520px 520px, 640px 640px, 760px 760px, 700px 700px, 600px 600px;
+  animation: emberdrift 52s linear infinite;
+}
+@keyframes emberdrift {
+  from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; }
+  to   { background-position: 60px -560px, -80px -640px, 40px -760px, -60px -700px, 90px -600px; }
+}
+
+/* 面板四角的角花（左上 + 右下，另一角旋转 180°） */
+.panel::before {
+  content:''; position:absolute; left:0; top:0; width:28px; height:28px; pointer-events:none; z-index:1;
+  background: url("assets/corner.svg") left top/contain no-repeat; opacity:.5;
+}
+.panel::after {
+  content:''; position:absolute; right:0; bottom:0; width:28px; height:28px; pointer-events:none; z-index:1;
+  background: url("assets/corner.svg") left top/contain no-repeat; opacity:.5;
+  transform: rotate(180deg);
+}
+
+/* 标题下的星菱分隔线 */
+header h1 { position:relative; padding-bottom:8px; }
+header h1::after {
+  content:''; position:absolute; left:0; bottom:0; width:100%; height:11px;
+  background: url("assets/divider.svg") left center/100% 100% no-repeat; opacity:.75;
+}
+
+/* 页面角落的钟楼剪影 + 飞鸟 */
+html::after {
+  content:''; position:fixed; right:16px; bottom:12px; width:74px; height:118px;
+  pointer-events:none; z-index:2; opacity:.11;
+  background: url("assets/tower.svg") right bottom/contain no-repeat;
+}
+html::before {
+  content:''; position:fixed; left:0; top:64px; width:180px; height:90px;
+  pointer-events:none; z-index:2; opacity:.09;
+  background: url("assets/birds.svg") left top/contain no-repeat;
+}
+
+/* 小节标题前的花饰 */
+.pool-title::before, .panel h2::before, .night-log-title::before, .bluff-title::before {
+  content:''; display:inline-block; width:24px; height:12px; margin-right:6px; vertical-align:-1px;
+  background: url("assets/chapter.svg") left center/contain no-repeat; opacity:.8;
+}
+
+/* 主按钮扫光 */
+button.primary { position:relative; overflow:hidden; }
+button.primary::after {
+  content:''; position:absolute; top:-20%; left:-60%; width:45%; height:140%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent);
+  transform: skewX(-18deg); transition: left .5s ease;
+}
+button.primary:hover::after { left:125%; }
+
+/* 圆桌法阵：素材库里的符文环，缓慢旋转 */
+.stage::before {
+  content:''; position:absolute; inset:0; pointer-events:none; border:0; border-radius:0;
+  background: url("assets/runes.svg") center/contain no-repeat;
+  box-shadow:none; opacity:.6;
+  animation: slowspin 320s linear infinite;
+}
+.stage::after { content:''; }
+@keyframes slowspin { to { transform: rotate(360deg); } }
+
+/* 座位卡悬停金边扫过 */
+.seat::after {
+  content:''; position:absolute; inset:0; border-radius:8px; pointer-events:none; opacity:0;
+  transition: opacity .25s;
+  box-shadow: inset 0 0 0 1px rgba(232,198,92,.6), 0 0 20px rgba(232,198,92,.2);
+}
+.seat:hover::after { opacity:1; }
+
+/* 夜数背后的血月 */
+.center-night::before {
+  content:''; position:absolute; left:50%; top:50%; width:185px; height:185px;
+  transform: translate(-50%,-50%); pointer-events:none; border-radius:0;
+  background: url("assets/bloodmoon.svg") center/contain no-repeat;
+  opacity:.55; animation: heartbeat 6s ease-in-out infinite;
+}
+
+/* ---------- 角色图标 ---------- */
+.role-ic { position:relative; display:inline-flex; width:1em; height:1em; vertical-align:-.14em; flex-shrink:0; }
+.role-ico { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round; }
+.role-img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0; transition:opacity .15s; }
+.role-ic.has-img .role-img { opacity:1; }
+.role-ic.has-img .role-ico { visibility:hidden; }
+.chip { display:inline-flex; align-items:center; gap:5px; }
+.chip .role-ic { width:13px; height:13px; }
+.seat-role-row { display:flex; align-items:center; gap:5px; margin-bottom:5px; }
+.seat-role-row .seat-role { flex:1; min-width:0; margin-bottom:0; }
+.seat-role-row .role-ic { width:15px; height:15px; }
+.ni-head .role-ic { width:14px; height:14px; margin-right:5px; }
+@keyframes heartbeat {
+  0%,100% { transform: translate(-50%,-50%) scale(1); opacity:.75; }
+  50%     { transform: translate(-50%,-50%) scale(1.12); opacity:1; }
+}
+
+@media (max-width: 760px) {
+  .seat { width: 118px; padding: 4px 5px 5px; }
+  .seat-name { font-size: 11px; }
+  .seat-role { font-size: 10px; padding: 2px 3px; }
+  .mark { font-size: 9px; padding: 2px 1px; }
+  main { padding: 12px; gap: 12px; }
+  .center-night .cn-num { font-size: 38px; }
+  header { padding: 10px 12px; }
+  h1 { font-size: 14px; letter-spacing: 2px; }
+  body::after { animation: none; opacity: .3; }
+  .stage::after { animation-duration: 260s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* 阶段图标（素材库：月牙 / 太阳） */
+.phase-ico { width:14px; height:14px; vertical-align:-2px; opacity:.9; margin-right:3px; }
+/* ============================================================
+   血月玻璃主题：背景图 + 淡白蒙版（文字块 = 磨砂玻璃）
+   ============================================================ */
+:root {
+  --bg:#f5efe4;
+  --panel:rgba(255,255,255,.72);
+  --panel2:rgba(255,255,255,.86);
+  --border:rgba(94,78,58,.22);
+  --text:#241d2b; --muted:#6b6270;
+  --gold:#b8860b;
+  --townsfolk:#2f6fb0; --outsider:#2e7d5b; --minion:#b3661c; --demon:#a02c2c;
+  --bluff:#7d4bb0; --ok:#2e7d5b; --err:#b03a3a; --warn:#a87c14;
+}
+body {
+  color: var(--text);
+  background:
+    linear-gradient(rgba(255,251,244,.48), rgba(255,251,244,.66)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+body::before { display: none; }
+body::after { opacity: .16; }
+h1 { color:#96700f; text-shadow:none; }
+h1 small { color:#7a705f; }
+header {
+  background: rgba(255,252,246,.84);
+  border-bottom: 1px solid rgba(94,78,58,.2);
+  box-shadow: 0 1px 0 rgba(184,134,11,.25), 0 8px 22px rgba(70,50,25,.10);
+}
+.room-pill { background: rgba(255,255,255,.9); border-color: rgba(94,78,58,.25); }
+.room-pill b { color:#96700f; }
+
+select, input, button { background: rgba(255,255,255,.9); color: var(--text); border-color: rgba(94,78,58,.25); }
+select option { background:#fff; color: var(--text); }
+button:hover { border-color: rgba(184,134,11,.75); color:#96700f; }
+button.primary { background: linear-gradient(180deg,#c9a227,#a07f1c); color:#17120a; border-color:#a8841a; }
+button.primary:hover { background: linear-gradient(180deg,#dcb63a,#b08c22); color:#120f08; }
+button.danger { color:#a02c2c; border-color: rgba(160,44,44,.32); background: rgba(160,44,44,.06); }
+button.danger:hover { background: rgba(160,44,44,.14); color:#8d2020; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 34px rgba(70,50,25,.12), inset 0 1px 0 rgba(255,255,255,.65);
+  backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+}
+.panel h2, .night-log-title { color:#7a6b52; }
+.pool-footer { border-top-color: rgba(94,78,58,.18); }
+
+.chip, .tab, .vote-chip { background: rgba(255,255,255,.75); color:#4d4557; border-color: rgba(94,78,58,.22); }
+.chip:hover, .tab:hover, .vote-chip:hover { border-color: rgba(184,134,11,.7); color:#96700f; }
+.chip.on, .tab.active { background: linear-gradient(180deg,#c9a227,#a07f1c); color:#17120a; border-color:#a8841a; }
+.chip.on:hover, .tab.active:hover { color:#17120a; }
+.bluff-slot { background: rgba(255,255,255,.7); border:1px dashed rgba(125,75,176,.4); }
+.bluff-slot select { background: rgba(255,255,255,.92); border-color: rgba(125,75,176,.3); }
+
+.stage::before { opacity:.32; }
+.center-night::before { display:none; }
+.center-night .cn-num { color:#7d1a1f; text-shadow:0 2px 12px rgba(255,246,236,.9); animation:none; }
+.center-night .cn-label { color:#7a6b52; }
+.center-night .cn-sub { color:#7a705f; }
+.phase-ico { opacity:.75; }
+
+.seat {
+  background: rgba(255,255,255,.82);
+  border: 1px solid rgba(94,78,58,.2);
+  box-shadow: 0 6px 16px rgba(70,50,25,.12), inset 0 1px 0 rgba(255,255,255,.8);
+}
+.seat:hover { border-color: rgba(94,78,58,.35); box-shadow: 0 12px 28px rgba(70,50,25,.2); transform: translate(-50%,-50%) scale(1.03); }
+.seat-no { background: rgba(120,100,70,.12); color:#7a6b52; }
+.seat-name { color: var(--text); }
+.seat-name:focus { background:#fff; border-color: rgba(184,134,11,.7); box-shadow:0 0 0 2px rgba(184,134,11,.14); }
+.death-btn:hover { background: rgba(120,100,70,.12); }
+.seat-role { background: rgba(255,255,255,.9); }
+.mark { background: rgba(255,255,255,.7); border-color: rgba(94,78,58,.22); color:#6b6270; }
+.mark.on { background: linear-gradient(180deg,#c9a227,#a07f1c); color:#17120a; border-color:#a8841a; }
+.tell-role { background: rgba(47,111,176,.10); border-color: rgba(47,111,176,.32); color:#2f6fb0; }
+.tell-role:hover { background: rgba(47,111,176,.2); }
+.release-seat { background: rgba(160,44,44,.08); border-color: rgba(160,44,44,.3); color:#a02c2c; }
+.release-seat:hover { background: rgba(160,44,44,.16); }
+
+.night-item, .night-log-card, .vote-box, .pending-item, .dm-msg-box, .log-item {
+  background: rgba(255,255,255,.72); border-color: rgba(94,78,58,.2);
+}
+.nl-lines li, .dm-msg-item { background: rgba(255,255,255,.6); border-left-color: rgba(94,78,58,.25); }
+.nl-lines li.tag-expire { color:#8d8578; }
+.nl-actions button { background: transparent; border-color: rgba(94,78,58,.22); color:#6b6270; }
+.vote-chip.yes { background: linear-gradient(180deg,#3f9c72,#2e7d5b); color:#fff; border-color:#2e7d5b; }
+.dm-msg-item b { color: var(--text); }
+.pending-extra input[type="checkbox"] { accent-color:#b8860b; }
+.empty, .pool-status, .comp { color: var(--muted); }
+.pool-status b { color: var(--text); }
+::-webkit-scrollbar-thumb { background: rgba(120,100,70,.35); }
+::-webkit-scrollbar-thumb:hover { background: rgba(120,100,70,.5); }
+input::placeholder { color:#9a9184; }
+::selection { background: rgba(184,134,11,.25); color:#1c1722; }
+
+/* ============================================================
+   暗调回归：背景只加一层淡暗蒙版，白玻璃只给内容块
+   ============================================================ */
+body {
+  color:#efe7d8;
+  background:
+    linear-gradient(rgba(10,8,14,.20), rgba(10,8,14,.48)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+header {
+  background: rgba(18,15,24,.80);
+  border-bottom: 1px solid rgba(232,198,92,.20);
+  box-shadow: 0 1px 0 rgba(232,198,92,.14), 0 10px 26px rgba(0,0,0,.45);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+header h1 { color:#e8c65c; }
+header h1 small { color:#9b9282; }
+.room-pill { background: rgba(30,26,40,.82); color:#c0b5a3; border-color: rgba(232,198,92,.25); }
+.room-pill b { color:#e8c65c; }
+header select, header button {
+  background: rgba(30,26,40,.85); color:#efe7d8; border-color: rgba(232,198,92,.28);
+}
+header select option { background:#1b1725; color:#efe7d8; }
+.panel { color:#241d2b; background: rgba(255,255,255,.80); }
+.panel .comp, .panel .pool-status, .panel .night-log-title, .panel h2 { color:#6b6270; }
+
+/* ---------- 座位大头像圈 ---------- */
+.seat-avatar {
+  width:56px; height:56px; margin:0 auto 7px; border-radius:50%; position:relative;
+  display:flex; align-items:center; justify-content:center;
+  background: radial-gradient(circle at 50% 30%, #fffdf8, #ecdfc4);
+  border:2px solid var(--ring, rgba(94,78,58,.28));
+  box-shadow: 0 4px 12px rgba(70,50,25,.22), inset 0 0 16px rgba(184,134,11,.14);
+}
+.seat-avatar .role-ic { width:46px; height:46px; color:#5a4a2a; }
+.seat-avatar.dead { filter:grayscale(1); opacity:.45; }
+.avatar-empty { font-size:22px; font-weight:700; color:#b9ae97; }
+@media (max-width:760px) {
+  .seat-avatar { width:46px; height:46px; margin-bottom:5px; }
+  .seat-avatar .role-ic { width:38px; height:38px; }
+  .avatar-empty { font-size:18px; }
+}
+
+/* ---------- 旁观信息条 ---------- */
+.spec-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 20px;
+  background: rgba(30,26,40,.86); border-bottom:1px solid rgba(232,198,92,.28); color:#efe7d8;
+  font-size:12px; }
+.spec-bar.hidden { display:none; }
+.spec-bar .sb-tag { color:#e8c65c; font-weight:700; letter-spacing:1px; }
+.spec-bar .sb-item { color:#c0b5a3; }
+.spec-bar .sb-item b { color:#fff; font-size:14px; letter-spacing:2px; }
+.spec-bar .sb-item code { color:#e8c65c; background:rgba(255,255,255,.08); padding:2px 6px; border-radius:4px;
+  font-size:11px; max-width:46vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle; }
+.spec-bar .sm { padding:4px 10px; font-size:12px; background:rgba(255,255,255,.12); color:#efe7d8;
+  border:1px solid rgba(232,198,92,.35); border-radius:6px; }
+.spec-bar .sm:hover { background:rgba(232,198,92,.22); color:#fff; }
+.spec-bar .sm.danger { border-color:rgba(200,80,80,.5); color:#f0b8b8; }
+.spec-bar .sb-msg { color:#7ad19a; font-size:12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>血染钟楼 · 说书人助手 <small>暗流涌动</small></h1>
+  <div class="ctrl">
+    <span class="room-pill" id="roomPill" title="点这里换房间">🚪 <b id="roomLabel">-</b></span>
+    <select id="countSel">
+      <option>5</option><option>6</option><option>7</option><option>8</option>
+      <option>9</option><option>10</option><option>11</option><option>12</option>
+      <option>13</option><option>14</option><option>15</option>
+    </select>
+    <button id="btnNextNight" class="primary">🌙 下一夜</button>
+    <button id="btnNew">新游戏</button>
+    <button id="btnClearSeats">清空座位</button>
+    <button id="btnSpectator">👁 旁观</button>
+  </div>
+</header>
+
+<div id="specBar" class="spec-bar hidden">
+  <span class="sb-tag">👁 旁观已开启</span>
+  <span class="sb-item">密码 <b id="specPw">—</b></span>
+  <button id="btnCopyPw" class="sm">复制密码</button>
+  <span class="sb-item">链接 <code id="specLink">—</code></span>
+  <button id="btnCopyLink" class="sm">复制链接</button>
+  <button id="btnSpecNewPw" class="sm">换密码</button>
+  <button id="btnSpecOff" class="sm danger">关闭旁观</button>
+  <span id="specMsg" class="sb-msg"></span>
+</div>
+
+<main>
+  <section class="panel">
+    <div class="pool-section">
+      <div class="pool-head">
+        <span class="pool-title">本 场 角 色 池（由 DM 确定）</span>
+        <span class="pool-hint">点击角色选中 / 取消，数量需与人数匹配</span>
+      </div>
+      <div id="poolGrid" class="pool-grid"></div>
+      <div class="pool-footer">
+        <div id="poolStatus" class="pool-status"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button id="btnAutoFill">按人数自动填充</button>
+          <button id="btnClearPool">清空角色池</button>
+          <button id="btnDeal" class="primary">🎲 随机分发到座位</button>
+          <button id="btnTellAll">📤 一键告知全部角色</button>
+          <button id="btnTellEvil">😈 告知邪恶互认</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bluff-section">
+      <div class="bluff-head">
+        <span class="bluff-title">🩸 恶魔伪装身份（3 个未使用的镇民）</span>
+        <span class="bluff-hint" id="bluffHint">供恶魔在受审时宣称，不会分配给玩家</span>
+      </div>
+      <div id="bluffSlots" class="bluff-slots"></div>
+    </div>
+
+    <div class="panel-head">
+      <h2>圆 桌</h2>
+      <div id="compInfo" class="comp"></div>
+    </div>
+    <div class="stage-wrap">
+      <div id="stage" class="stage"></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:16px;">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>夜 晚 顺 序</h2>
+        <div class="tabs">
+          <button class="tab active" data-night="first">首夜</button>
+          <button class="tab" data-night="other">其他夜</button>
+        </div>
+      </div>
+      <ul id="nightOrder"></ul>
+    </div>
+
+    <div class="panel">
+      <div class="night-log-head">
+        <span class="night-log-title">📥 玩家行动待确认</span>
+        <div class="night-log-tools">
+          <span id="pendingCount" style="font-size:11px;color:var(--muted);"></span>
+        </div>
+      </div>
+      <div id="pendingList" class="pending-list"></div>
+
+      <div class="night-log-head" style="margin-top:14px;">
+        <span class="night-log-title">📨 私信玩家（仅该玩家可见）</span>
+      </div>
+      <div class="dm-msg-box">
+        <div class="dm-msg-row">
+          <div class="vote-field">
+            <label>发给</label>
+            <select id="dmMsgSeat"></select>
+          </div>
+          <div class="vote-field wide">
+            <label>信息内容</label>
+            <input id="dmMsgText" placeholder="例如：你得知 3 号与 7 号中有一名恶魔">
+          </div>
+        </div>
+        <button id="btnSendDmMsg" class="primary sm">发送</button>
+        <span id="dmMsgFeedback" class="vote-feedback"></span>
+        <div id="dmMsgHistory" class="dm-msg-history" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="night-log-head">
+        <span class="night-log-title">🌙 夜 与 白 天 记 录</span>
+        <div class="night-log-tools">
+          <button id="btnAddNote" class="sm">+ 手动备注</button>
+        </div>
+      </div>
+      <div id="nightLogList" class="night-log-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="night-log-head">
+        <span class="night-log-title">🗳️ 白 天 投 票</span>
+        <div class="night-log-tools">
+          <span id="voteDayLabel" style="font-size:12px;color:var(--gold);font-weight:700;"></span>
+        </div>
+      </div>
+      <div class="vote-box">
+        <div class="vote-row">
+          <div class="vote-field">
+            <label>被提名者</label>
+            <select id="voteNominee"></select>
+          </div>
+          <div class="vote-field">
+            <label>提名者</label>
+            <select id="voteNominator"></select>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">赞成票（点击玩家切换）</div>
+        <div id="votePlayers" class="vote-players"></div>
+        <div id="voteResult" class="vote-result"></div>
+        <div class="vote-actions">
+          <button id="btnRecordVote" class="primary sm">记录本次投票</button>
+          <button id="btnClearVote" class="sm">清除选择</button>
+          <span id="voteFeedback" class="vote-feedback"></span>
+        </div>
+      </div>
+      <div id="voteHistory" class="vote-history"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>操 作 日 志</h2></div>
+      <div id="log" class="log"></div>
+      <div class="log-input-row">
+        <input id="logInput" placeholder="记录一条信息，回车添加…" maxlength="120">
+        <button id="btnLog">添加</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="supabase-config.js"></script>
+<script src="shared.js"></script>
+<script>
+let state = {
+  players: [],
+  pool: [],
+  bluff: [null, null, null],
+  night: 'first',
+  currentNight: 1,
+  phase: 'night',
+  log: [],
+  nightLogs: [],
+  votes: [],
+  accounts: [],
+  dmMessages: [],  // { seatId, text, night, time }
+  submitted: {},   // { 座位号: 夜晚序号 } —— 本夜已经提交过行动的座位
+  pending: [],     // 待确认的玩家行动（随存档持久化）
+  spectator: { enabled: false, password: '' }  // 旁观者视角
+};
+
+let voteNomineeId = null;
+let voteNominatorId = null;
+let voteYesSet = new Set();
+let lastSnapshot = null;
+let pendingActions = [];
+let seatOccupancy = new Map();
+
+const STORAGE_KEY = 'botc_dm_v13';
+
+function save() {
+  try { state.pending = pendingActions; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (!s || !Array.isArray(s.players) || !s.players.length) return;
+
+    state.players = s.players.map((p, i) => ({
+      id: (typeof p.id === 'number' || typeof p.id === 'string') ? p.id : i,
+      name: typeof p.name === 'string' ? p.name : ('玩家' + (i + 1)),
+      role: (typeof p.role === 'string' && ROLES[p.role]) ? p.role : null,
+      alive: p.alive !== false,
+      marks: Array.isArray(p.marks) ? p.marks.filter(m => MARKS.includes(m)) : [],
+      belief: (typeof p.belief === 'string' && ROLES[p.belief]) ? p.belief : null
+    }));
+    state.pool = Array.isArray(s.pool) ? s.pool.filter(id => ROLES[id]) : [];
+    /* 老存档里的酒鬼没有假身份，这里补一个 */
+    state.players.forEach(p => { if (p.role === 'drunk' && !p.belief) p.belief = pickDrunkBelief(); });
+    /* 恶魔伪装不能和酒鬼假身份重复 */
+    const beliefSet = new Set(state.players.filter(p => p.belief).map(p => p.belief));
+    state.bluff = state.bluff.map(b => (b && beliefSet.has(b)) ? null : b);
+    state.bluff = Array.isArray(s.bluff) ? s.bluff.slice(0, 3) : [null,null,null];
+    while (state.bluff.length < 3) state.bluff.push(null);
+    state.bluff = state.bluff.map(id => (typeof id === 'string' && ROLES[id]) ? id : null);
+    state.night = s.night === 'other' ? 'other' : 'first';
+    state.currentNight = (typeof s.currentNight === 'number' && s.currentNight >= 1) ? s.currentNight : 1;
+    state.phase = s.phase === 'day' ? 'day' : 'night';
+    state.log = Array.isArray(s.log) ? s.log.filter(l => l && typeof l.text === 'string') : [];
+    state.nightLogs = Array.isArray(s.nightLogs) ? s.nightLogs.filter(n => n && typeof n.night === 'number').map(n => ({
+      night: n.night,
+      lines: Array.isArray(n.lines) ? n.lines.filter(l => l && typeof l.text === 'string').map(l => ({
+        text: l.text, tag: ['night','vote','status','expire','dm'].includes(l.tag) ? l.tag : 'status'
+      })) : []
+    })) : [];
+    state.votes = Array.isArray(s.votes) ? s.votes.filter(v => v && typeof v.night === 'number') : [];
+    state.accounts = Array.isArray(s.accounts) ? s.accounts.filter(a => a && typeof a.seatId === 'number') : [];
+    state.dmMessages = Array.isArray(s.dmMessages) ? s.dmMessages.filter(m => m && typeof m.text === 'string') : [];
+    state.submitted = (s.submitted && typeof s.submitted === 'object') ? s.submitted : {};
+    state.spectator = (s.spectator && typeof s.spectator === 'object')
+      ? { enabled: !!s.spectator.enabled, password: String(s.spectator.password || '') }
+      : { enabled: false, password: '' };
+    pendingActions = Array.isArray(s.pending) ? s.pending : [];
+    pendingActions.sort((x, y) => nightOrderRank(x.roleId) - nightOrderRank(y.roleId));
+
+    seatOccupancy.clear();
+    state.accounts.forEach(a => {
+      seatOccupancy.set(a.seatId, { playerId: a.playerId, username: a.username });
+    });
+  } catch (e) { console.warn('读取存档失败', e); }
+}
+
+function playerNameById(id) {
+  const p = state.players.find(x => String(x.id) === String(id));
+  return p ? p.name : '?';
+}
+
+/* 酒鬼：给一张不在场的镇民牌当「假身份」（不能和恶魔的伪装重复） */
+function pickDrunkBelief() {
+  const used = new Set(state.pool || []);
+  (state.bluff || []).forEach(b => { if (b) used.add(b); });
+  let cands = Object.keys(ROLES).filter(k => ROLES[k].team === 'townsfolk' && !used.has(k));
+  if (!cands.length) {
+    const onlyPool = new Set(state.pool || []);
+    cands = Object.keys(ROLES).filter(k => ROLES[k].team === 'townsfolk' && !onlyPool.has(k));
+  }
+  if (!cands.length) cands = Object.keys(ROLES).filter(k => ROLES[k].team === 'townsfolk');
+  return cands[Math.floor(Math.random() * cands.length)];
+}
+
+/* 玩家实际应该看到的角色（酒鬼看到的是假牌） */
+function displayRoleOf(p) {
+  if (!p || !p.role) return null;
+  if (p.role === 'drunk' && p.belief && ROLES[p.belief]) return p.belief;
+  return p.role;
+}
+function playerRoleNameById(id) {
+  const p = state.players.find(x => String(x.id) === String(id));
+  if (!p || !p.role) return '';
+  return ROLES[p.role].name;
+}
+function snapshotPlayers() {
+  return state.players.map(p => ({ id: p.id, name: p.name, alive: p.alive, marks: [...p.marks] }));
+}
+function ensureNightLog(night) {
+  let nl = state.nightLogs.find(n => n.night === night);
+  if (!nl) { nl = { night, lines: [] }; state.nightLogs.push(nl); state.nightLogs.sort((a,b)=>a.night-b.night); }
+  return nl;
+}
+function addNightLine(night, text, tag) {
+  ensureNightLog(night).lines.push({ text, tag: tag || 'status' });
+}
+function nightTitle(night) { return night === 1 ? '第 1 夜 · 首夜' : `第 ${night} 夜`; }
+
+function getTargets() {
+  const cfg = TABLE[state.players.length];
+  if (!cfg) return null;
+  const t = { ...cfg };
+  if (state.pool.includes('baron')) { t.outsider += 2; t.townsfolk -= 2; }
+  return t;
+}
+function poolCountByTeam() {
+  const c = { townsfolk:0, outsider:0, minion:0, demon:0 };
+  state.pool.forEach(id => { if (ROLES[id]) c[ROLES[id].team]++; });
+  return c;
+}
+function validatePool() {
+  const t = getTargets();
+  if (!t) return { ok:false, msg:'人数不支持' };
+  const c = poolCountByTeam();
+  const total = state.pool.length;
+  if (total !== state.players.length) return { ok:false, msg:`角色总数 ${total} / 需 ${state.players.length}` };
+  for (const k of TEAM_ORDER) {
+    if (c[k] !== t[k]) return { ok:false, msg:`${TEAM_LABEL[k]} ${c[k]} / 需 ${t[k]}` };
+  }
+  return { ok:true, msg:'角色池合法 ✓' };
+}
+function unusedTownsfolk() {
+  const used = new Set(state.pool);
+  /* 酒鬼假扮的镇民已经从「不在场镇民」里占掉一张，不能再当恶魔的伪装 */
+  state.players.forEach(p => { if (p.belief) used.add(p.belief); });
+  return Object.entries(ROLES)
+    .filter(([id, r]) => r.team === 'townsfolk' && !used.has(id))
+    .map(([id, r]) => ({ id, name: r.name }));
+}
+
+function renderPool() {
+  const grid = document.getElementById('poolGrid');
+  grid.innerHTML = '';
+  TEAM_ORDER.forEach(team => {
+    const row = document.createElement('div');
+    row.className = 'pool-row';
+    const label = document.createElement('div');
+    label.className = 'pool-label';
+    label.style.color = `var(--${team})`;
+    label.textContent = TEAM_LABEL[team];
+    const chips = document.createElement('div');
+    chips.className = 'pool-chips';
+    Object.entries(ROLES).forEach(([id, r]) => {
+      if (r.team !== team) return;
+      const b = document.createElement('button');
+      b.className = 'chip' + (state.pool.includes(id) ? ' on' : '');
+      b.dataset.role = id;
+      b.dataset.team = team;
+      b.innerHTML = roleIcon(id) + '<span>' + escapeHtml(r.name) + '</span>';
+      b.title = r.ability;
+      chips.appendChild(b);
+    });
+    row.appendChild(label); row.appendChild(chips);
+    grid.appendChild(row);
+  });
+}
+function renderPoolStatus() {
+  const el = document.getElementById('poolStatus');
+  const t = getTargets();
+  const c = poolCountByTeam();
+  const v = validatePool();
+  if (!t) { el.textContent = '当前人数不支持'; return; }
+  const parts = TEAM_ORDER.map(k => {
+    const cls = c[k] === t[k] ? 'good' : 'err';
+    return `<span class="${cls}">${TEAM_LABEL[k]} <b>${c[k]}</b>/${t[k]}</span>`;
+  });
+  const totalCls = state.pool.length === state.players.length ? 'good' : 'warn';
+  parts.push(`<span class="${totalCls}">总数 <b>${state.pool.length}</b>/${state.players.length}</span>`);
+  el.innerHTML = parts.join(' &nbsp;·&nbsp; ') + `<br><span class="${v.ok ? 'good' : 'warn'}">${v.msg}</span>`;
+}
+function renderBluff() {
+  const wrap = document.getElementById('bluffSlots');
+  wrap.innerHTML = '';
+  const candidates = unusedTownsfolk();
+  const hint = document.getElementById('bluffHint');
+  if (hint) {
+    const beliefs = state.players.filter(p => p.belief && ROLES[p.belief]).map(p => ROLES[p.belief].name);
+    hint.textContent = beliefs.length
+      ? `供恶魔在受审时宣称 · 已排除酒鬼假扮的「${beliefs.join('、')}」`
+      : '供恶魔在受审时宣称，不会分配给玩家';
+  }
+  for (let i = 0; i < 3; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'bluff-slot';
+    const no = document.createElement('span');
+    no.className = 'slot-no';
+    no.textContent = '伪装' + (i + 1);
+    const sel = document.createElement('select');
+    sel.dataset.slot = i;
+    let opts = '<option value="">— 未选择 —</option>';
+    if (!candidates.length) {
+      opts = '<option value="">（无可用镇民）</option>';
+    } else {
+      candidates.forEach(c => {
+        if (state.bluff.some((b, j) => b === c.id && j !== i)) return;
+        opts += `<option value="${c.id}"${state.bluff[i] === c.id ? ' selected' : ''}>${c.name}</option>`;
+      });
+    }
+    sel.innerHTML = opts;
+    slot.appendChild(no); slot.appendChild(sel);
+    wrap.appendChild(slot);
+  }
+}
+
+function layoutSeats() {
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+  const cards = stage.querySelectorAll('.seat');
+  const n = cards.length;
+  if (!n) return;
+  const W = stage.clientWidth, H = stage.clientHeight;
+  if (!W || !H) return;
+  const cardW = cards[0].offsetWidth  || 150;
+  const cardH = cards[0].offsetHeight || 100;
+  const radius = Math.max(10, Math.min(W, H) / 2 - Math.max(cardW, cardH) / 2 - 4);
+  cards.forEach((el, i) => {
+    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    el.style.left = (W / 2 + radius * Math.cos(angle)) + 'px';
+    el.style.top  = (H / 2 + radius * Math.sin(angle)) + 'px';
+  });
+}
+function roleOptions(selected) {
+  let html = '<option value="">— 未分配 —</option>';
+  for (const team of TEAM_ORDER) {
+    html += `<optgroup label="${TEAM_LABEL[team]}">`;
+    for (const [id, r] of Object.entries(ROLES)) {
+      if (r.team !== team) continue;
+      html += `<option value="${id}"${id === selected ? ' selected' : ''}>${r.name}</option>`;
+    }
+    html += '</optgroup>';
+  }
+  return html;
+}
+function renderSeats() {
+  const stage = document.getElementById('stage');
+  stage.innerHTML = '';
+  const center = document.createElement('div');
+  center.className = 'center-night';
+  const phaseLabel = state.phase === 'day' ? '白 天' : '夜 晚';
+  center.innerHTML = `
+    <div class="cn-label"><img class="phase-ico" src="assets/${state.phase === 'day' ? 'sun' : 'moon'}.svg" alt=""> ${phaseLabel}</div>
+    <div class="cn-num">${state.currentNight}</div>
+    <div class="cn-sub">${state.phase === 'day' ? '白天讨论与投票' : '夜晚行动中'}</div>
+  `;
+  stage.appendChild(center);
+
+  state.players.forEach((p, i) => {
+    const r = p.role ? ROLES[p.role] : null;
+    const el = document.createElement('div');
+    el.className = 'seat' + (p.alive ? '' : ' dead');
+    el.dataset.id = p.id;
+    if (r) el.dataset.team = r.team;
+    const seatNo = i + 1;
+    const occ = seatOccupancy.get(seatNo);
+    el.innerHTML = `
+      <div class="seat-avatar${p.alive ? '' : ' dead'}"${r ? ` style="--ring:var(--${r.team})"` : ''}>
+        ${p.role ? roleIcon(p.role, 'avatar') : '<span class="avatar-empty">?</span>'}
+      </div>
+      <div class="seat-top">
+        <span class="seat-no">${seatNo}</span>
+        <input class="seat-name" data-id="${p.id}" value="${escapeHtml(p.name)}"
+               maxlength="10" placeholder="玩家名">
+        <button class="death-btn" data-id="${p.id}"
+                title="${p.alive ? '标记死亡' : '标记存活'}">${p.alive ? '👤' : '💀'}</button>
+      </div>
+      <div class="seat-role-row">
+        <select class="seat-role" data-id="${p.id}">${roleOptions(p.role)}</select>
+      </div>
+      ${p.role === 'drunk' && p.belief ? `<div style="font-size:10px;color:#7a7a8c;margin:-2px 0 5px;">🎭 假装：${ROLES[p.belief].name}</div>` : ''}
+      <div class="seat-marks">
+        ${MARKS.map(m => `<button class="mark${p.marks.includes(m) ? ' on' : ''}"
+            data-id="${p.id}" data-mark="${m}">${MARK_ICON[m] || ''}${m}</button>`).join('')}
+      </div>
+      <div class="seat-actions">
+        ${p.role ? `<button class="tell-role" data-id="${p.id}">📤 告知角色</button>` : ''}
+        ${occ ? `<button class="release-seat" data-id="${p.id}" data-seat="${seatNo}">🔓 释放</button>` : ''}
+      </div>
+    `;
+    stage.appendChild(el);
+  });
+  requestAnimationFrame(layoutSeats);
+}
+function renderComp() {
+  const el = document.getElementById('compInfo');
+  const t = getTargets();
+  const cur = { townsfolk:0, outsider:0, minion:0, demon:0 };
+  state.players.forEach(p => { if (p.role) cur[ROLES[p.role].team]++; });
+  if (!t) { el.textContent = ''; return; }
+  el.innerHTML = TEAM_ORDER.map(k =>
+    `<span class="${cur[k] === t[k] ? 'ok' : 'bad'}">${TEAM_LABEL[k]} <b>${cur[k]}/${t[k]}</b></span>`
+  ).join('');
+}
+function renderNightOrder() {
+  const order = state.night === 'first' ? ORDER_FIRST : ORDER_OTHER;
+  const list = document.getElementById('nightOrder');
+  list.innerHTML = '';
+  const alive = state.players.filter(p => p.alive && p.role);
+  let count = 0;
+  for (const roleId of order) {
+    const p = alive.find(x => x.role === roleId);
+    if (!p) continue;
+    count++;
+    const r = ROLES[roleId];
+    const li = document.createElement('li');
+    li.className = 'night-item';
+    li.style.borderLeftColor = `var(--${r.team})`;
+    li.innerHTML = `
+      <div class="ni-head">
+        <span class="ni-role" style="color:var(--${r.team})">${roleIcon(roleId)}${r.name}</span>
+        <span class="ni-player">→ ${escapeHtml(p.name)}</span>
+      </div>
+      <div class="ni-ability">${escapeHtml(r.ability)}</div>
+    `;
+    list.appendChild(li);
+  }
+  if (!count) list.innerHTML = '<li class="empty">暂无夜晚行动角色</li>';
+}
+
+function actionInputNeeded(a) {
+  const role = a.roleId && ROLES[a.roleId];
+  if (!role) return false;
+  if (role.action === 'divine') return true;
+  return false;
+}
+
+/* 夜晚行动顺序（用来给待确认列表排序：僧侣必须排在恶魔前面） */
+function nightOrderRank(roleId) {
+  const list = state.night === 'first' ? ORDER_FIRST : ORDER_OTHER;
+  const i = list.indexOf(roleId);
+  return i === -1 ? 999 : i;
+}
+
+function renderPending() {
+  const box = document.getElementById('pendingList');
+  const cnt = document.getElementById('pendingCount');
+  if (cnt) cnt.textContent = pendingActions.length ? `${pendingActions.length} 条待处理` : '';
+  if (!pendingActions.length) {
+    box.innerHTML = '<div class="empty">暂无待确认行动</div>';
+    return;
+  }
+  box.innerHTML = pendingActions.map((a, i) => {
+    const pName = playerNameById(a.seatId);
+    const role = a.roleId && ROLES[a.roleId] ? ROLES[a.roleId] : null;
+    const actorObj = state.players.find(x => String(x.id) === String(a.seatId));
+    const drunkTag = (actorObj && actorObj.role === 'drunk') ? ' 🍺酒鬼' : '';
+    const roleName = (role ? role.name : a.roleId) + drunkTag;
+    const marksTag = (actorObj && actorObj.marks.length)
+      ? ` <span style="color:#c03030;font-weight:400">[${actorObj.marks.join('/')}]</span>` : '';
+    /* 中毒 / 醉酒 / 酒鬼 → 默认判定技能无效，说书人可以手动取消勾选 */
+    const autoOff = !!(actorObj && (actorObj.role === 'drunk' ||
+      actorObj.marks.includes('中毒') || actorObj.marks.includes('醉酒')));
+    const targets = (a.targetSeats || []).map(id => playerNameById(id)).join('、');
+    const actionLabel = { poison:'下毒', kill:'杀害', protect:'保护', divine:'查验', info:'获取信息', spy:'查看魔典', butler:'选择主人' }[a.actionType] || a.actionType;
+    const needResult = actionInputNeeded(a);
+    return `
+      <div class="pending-item">
+        <div class="pending-info">
+          <div><b>${escapeHtml(pName)}</b>（${escapeHtml(roleName)}${marksTag}）→ <b>${escapeHtml(targets)}</b></div>
+          <div class="pending-meta">动作：${escapeHtml(actionLabel)} · 提交于 ${new Date(a.ts).toLocaleTimeString()}</div>
+        </div>
+        <div class="pending-extra">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:#7a7a8c;">
+            <input type="checkbox" class="pending-disabled" data-index="${i}"${autoOff ? ' checked' : ''}>
+            技能无效（中毒 / 醉酒 / 酒鬼 · 由说书人决定）
+          </label>
+        </div>
+        ${needResult ? `
+          <div class="pending-extra">
+            <label>查验结果（会私信发给该玩家）</label>
+            <input class="pending-result" data-index="${i}" placeholder="例如：是 / 否 / 你得知其中有一名恶魔">
+          </div>` : ''}
+        <div class="pending-actions">
+          <button class="sm" data-approve="${i}">确认</button>
+          <button class="sm danger" data-reject="${i}">驳回</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function applyPendingAction(a, extraResult, forcedDisabled) {
+  const targets = (a.targetSeats || []).map(id => state.players.find(x => String(x.id) === String(id))).filter(Boolean);
+  const actor = state.players.find(x => String(x.id) === String(a.seatId));
+  const roleName = a.roleId && ROLES[a.roleId] ? ROLES[a.roleId].name : a.actionType;
+  const targetNames = targets.map(t => t.name).join('、');
+  const actorIsDrunk = !!(actor && actor.role === 'drunk');
+  const actorMarks = actor ? actor.marks : [];
+  const autoOff = actorIsDrunk || actorMarks.includes('中毒') || actorMarks.includes('醉酒');
+  /* 说书人勾了/取消勾选就以他为准，没传就按状态自动判断 */
+  const disabled = (typeof forcedDisabled === 'boolean') ? forcedDisabled : autoOff;
+  const notes = [];
+
+  if (targets.length && !disabled) {
+    if (a.actionType === 'poison') {
+      targets.forEach(t => { if (!t.marks.includes('中毒')) t.marks.push('中毒'); });
+    }
+    else if (a.actionType === 'protect') {
+      targets.forEach(t => {
+        if (actor && String(t.id) === String(actor.id)) { notes.push(`${t.name} 不能保护自己，已忽略`); return; }
+        if (!t.marks.includes('保护')) t.marks.push('保护');
+      });
+    }
+    else if (a.actionType === 'kill') {
+      targets.forEach(t => {
+        const tOff = t.marks.includes('中毒') || t.marks.includes('醉酒');
+        if (t.marks.includes('保护')) { notes.push(`${t.name} 被保护，未死亡`); return; }
+        /* 中毒/醉酒的士兵能力失效，照样会被恶魔杀死 */
+        if (t.role === 'soldier' && !tOff) { notes.push(`${t.name} 是士兵，免疫恶魔杀害`); return; }
+        if (t.role === 'soldier') notes.push(`${t.name} 是士兵，但已中毒/醉酒，能力失效`);
+        t.alive = false;
+        notes.push(`${t.name} 死亡`);
+      });
+    }
+  }
+  if (disabled) {
+    notes.push(actorIsDrunk
+      ? '该玩家是酒鬼，技能无效'
+      : '说书人判定技能无效（中毒 / 醉酒）');
+  }
+
+  let line = (actor && targets.length)
+    ? `${actor.name}（${roleName}）对 ${targetNames} 使用了「${roleName}」`
+    : (actor ? `${actor.name}（${roleName}）执行了行动` : `玩家行动：${roleName}`);
+  if (notes.length) line += ` —— ${notes.join('；')}`;
+  addNightLine(state.currentNight, line, 'status');
+  addLog(`✅ 已确认：${line}`);
+
+  /* 私信结果给玩家（技能无效时也照发，正好用来给中毒玩家假信息） */
+  if (extraResult && extraResult.trim() && actor) {
+    sendPrivateMsg(Number(a.seatId) + 1, extraResult.trim());
+  }
+}
+
+function renderNightLogs() {
+  const box = document.getElementById('nightLogList');
+  box.innerHTML = '';
+  if (!state.nightLogs.length) {
+    box.innerHTML = '<div class="empty">暂无记录。点击「🌙 下一夜」时会自动汇总当夜与白天的状态变化。</div>';
+    return;
+  }
+  state.nightLogs.forEach((nl, idx) => {
+    const card = document.createElement('div');
+    card.className = 'night-log-card';
+    const lines = nl.lines.map((line, li) =>
+      `<li class="tag-${line.tag || 'status'}">
+        <span class="line-text">${escapeHtml(line.text)}</span>
+        <button class="del-line" data-night="${idx}" data-line="${li}" title="删除">✕</button>
+      </li>`
+    ).join('');
+    card.innerHTML = `
+      <div class="nl-head">
+        <span class="nl-day">${nightTitle(nl.night)}</span>
+        <div class="nl-actions">
+          <button class="add-night-line" data-night="${idx}">+ 备注</button>
+          <button class="del-night" data-night="${idx}">删除</button>
+        </div>
+      </div>
+      ${nl.lines.length ? `<ul class="nl-lines">${lines}</ul>` : '<div class="nl-empty">暂无内容</div>'}
+    `;
+    box.appendChild(card);
+  });
+}
+
+function rebuildVoteSelects() {
+  const nomineeSel = document.getElementById('voteNominee');
+  const nominatorSel = document.getElementById('voteNominator');
+  let opts = '<option value="">— 选择 —</option>';
+  state.players.forEach(p => {
+    const deadMark = p.alive ? '' : '（已死亡）';
+    opts += `<option value="${p.id}">${escapeHtml(p.name)}${deadMark}</option>`;
+  });
+  nomineeSel.innerHTML = opts;
+  nominatorSel.innerHTML = opts;
+  if (voteNomineeId != null && state.players.some(p => String(p.id) === String(voteNomineeId))) {
+    nomineeSel.value = String(voteNomineeId);
+  } else { voteNomineeId = null; }
+  if (voteNominatorId != null && state.players.some(p => String(p.id) === String(voteNominatorId))) {
+    nominatorSel.value = String(voteNominatorId);
+  } else { voteNominatorId = null; }
+}
+function renderVotePlayers() {
+  const box = document.getElementById('votePlayers');
+  box.innerHTML = '';
+  state.players.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'vote-chip' + (voteYesSet.has(p.id) ? ' yes' : '') + (p.alive ? '' : ' dead');
+    b.dataset.pid = p.id;
+    b.textContent = p.name;
+    b.title = p.alive ? '点击切换赞成/反对' : '已死亡（不可投票）';
+    if (!p.alive) b.disabled = true;
+    box.appendChild(b);
+  });
+}
+function currentVoteInfo() {
+  const nominee = voteNomineeId == null ? NaN : Number(voteNomineeId);
+  const nominator = voteNominatorId == null ? NaN : Number(voteNominatorId);
+  const aliveCount = state.players.filter(p => p.alive).length;
+  const need = Math.floor(aliveCount / 2) + 1;
+  const yes = [...voteYesSet].filter(id => {
+    const p = state.players.find(x => x.id == id);
+    return p && p.alive;
+  });
+  const passed = yes.length >= need;
+  return { nominee, nominator, need, yes, passed, aliveCount };
+}
+function renderVoteResult() {
+  const info = currentVoteInfo();
+  const el = document.getElementById('voteResult');
+  if (!info.aliveCount) { el.textContent = ''; return; }
+  const voteCls = info.passed ? 'ok' : 'err';
+  el.innerHTML = `存活 <b>${info.aliveCount}</b> 人 · 通过需要 <b>${info.need}</b> 票 · 当前赞成 <span class="${voteCls}">${info.yes.length}</span> 票 · ${info.passed ? '<span class="ok">通过，处决</span>' : '<span class="err">未通过</span>'}`;
+}
+function renderVoteDayLabel() {
+  const lbl = document.getElementById('voteDayLabel');
+  lbl.textContent = state.phase === 'day' ? `第 ${state.currentNight} 天 · 白天` : `第 ${state.currentNight} 天 · 夜晚`;
+}
+function renderVoteHistory() {
+  const box = document.getElementById('voteHistory');
+  box.innerHTML = '';
+  if (!state.votes.length) { box.innerHTML = '<div class="empty">暂无投票记录</div>'; return; }
+  const groups = {};
+  state.votes.forEach((v, i) => { const key = v.night || 1; (groups[key] = groups[key] || []).push({ v, i }); });
+  Object.keys(groups).sort((a,b)=>a-b).forEach(n => {
+    groups[n].forEach(({ v, i }) => {
+      const row = document.createElement('div');
+      row.className = 'log-item';
+      row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.gap = '8px';
+      const yesNames = v.yes.map(id => playerNameById(id)).join('、') || '无';
+      const nomineeName = playerNameById(v.nominee);
+      const nominatorName = playerNameById(v.nominator);
+      const nomRole = playerRoleNameById(v.nominee);
+      const passedTxt = v.passed
+        ? `<span style="color:var(--ok);font-weight:700;">通过 → ${escapeHtml(nomineeName)} 被处决</span>`
+        : `<span style="color:var(--err);">未通过</span>`;
+      row.innerHTML = `
+        <div style="flex:1;">
+          <div style="font-size:11px;color:var(--gold);font-weight:700;">第 ${v.night || 1} 夜 / 第 ${v.night || 1} 天</div>
+          <div>提名者：<b>${escapeHtml(nominatorName)}</b> → 被提名：<b>${escapeHtml(nomineeName)}</b>${nomRole ? `（${escapeHtml(nomRole)}）` : ''}</div>
+          <div style="color:var(--muted);font-size:11px;">赞成 ${v.yes.length}/${v.need}：${escapeHtml(yesNames)}</div>
+          <div style="margin-top:2px;">${passedTxt}</div>
+        </div>
+        <button class="sm" data-del-vote="${i}" style="align-self:flex-start;">删除</button>
+      `;
+      box.appendChild(row);
+    });
+  });
+}
+function renderVotePanel() {
+  rebuildVoteSelects();
+  renderVotePlayers();
+  renderVoteResult();
+  renderVoteDayLabel();
+  renderVoteHistory();
+}
+
+function renderDmMsgSeatSelect() {
+  const sel = document.getElementById('dmMsgSeat');
+  const prev = sel.value;
+  let opts = '<option value="">— 选择座位 —</option>';
+  state.players.forEach((p, i) => {
+    opts += `<option value="${i + 1}">${i + 1} 号 · ${escapeHtml(p.name)}</option>`;
+  });
+  sel.innerHTML = opts;
+  if (prev) sel.value = prev;
+}
+function renderDmMsgHistory() {
+  const box = document.getElementById('dmMsgHistory');
+  if (!state.dmMessages.length) { box.innerHTML = '<div class="empty">暂无私信</div>'; return; }
+  const recent = state.dmMessages.slice(-10).reverse();
+  box.innerHTML = recent.map(m =>
+    `<div class="dm-msg-item">第 ${m.night} 夜 · 座位 ${m.seatId} <b>${escapeHtml(playerNameById(m.seatId - 1))}</b>：${escapeHtml(m.text)}</div>`
+  ).join('');
+}
+
+function renderLog() {
+  const el = document.getElementById('log');
+  if (!state.log.length) { el.innerHTML = '<div class="empty">暂无记录</div>'; return; }
+  el.innerHTML = state.log.map(l =>
+    `<div class="log-item"><span class="log-time">${l.time}</span>${escapeHtml(l.text)}</div>`
+  ).join('');
+  el.scrollTop = el.scrollHeight;
+}
+function addLog(text) {
+  if (!text || !text.trim()) return;
+  const d = new Date();
+  const time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  state.log.push({ time, text: text.trim() });
+  renderLog();
+  save();
+}
+
+function advanceNight() {
+  const nightNo = state.currentNight;
+  const snap = lastSnapshot || snapshotPlayers();
+  const nl = ensureNightLog(nightNo);
+  state.players.forEach(p => {
+    const old = snap.find(s => s.id === p.id);
+    const oldMarks = old ? old.marks : [];
+    const newMarks = p.marks;
+    newMarks.forEach(m => {
+      if (!oldMarks.includes(m)) {
+        const verbMap = { '中毒':'被下毒','醉酒':'醉酒','保护':'被保护','疯狂':'陷入疯狂' };
+        nl.lines.push({ text: `${p.name} ${verbMap[m] || ('获得状态：' + m)}`, tag: 'status' });
+      }
+    });
+    oldMarks.forEach(m => {
+      if (!newMarks.includes(m)) nl.lines.push({ text: `${p.name} 的「${m}」状态消失`, tag: 'status' });
+    });
+    if (old && old.alive && !p.alive) nl.lines.push({ text: `${p.name} 死亡`, tag: 'status' });
+  });
+  state.players.forEach(p => {
+    const removed = [];
+    p.marks = p.marks.filter(m => { if (AUTO_EXPIRE.has(m)) { removed.push(m); return false; } return true; });
+    removed.forEach(m => nl.lines.push({ text: `${p.name} 的「${m}」在下一夜开始时自动清除`, tag: 'expire' }));
+  });
+  state.currentNight += 1;
+  state.phase = 'night';
+  lastSnapshot = snapshotPlayers();
+  voteNomineeId = null;
+  voteNominatorId = null;
+  voteYesSet.clear();
+  pendingActions = [];
+  state.submitted = {};
+  addLog(`🌙 进入第 ${state.currentNight} 夜（已汇总第 ${nightNo} 夜/天）`);
+  render();
+  broadcastPublicState();
+  dmChannel.send('night_advanced', { currentNight: state.currentNight });
+}
+
+function render() {
+  renderPool();
+  renderPoolStatus();
+  renderBluff();
+  renderSeats();
+  renderComp();
+  renderNightOrder();
+  renderPending();
+  renderNightLogs();
+  renderVotePanel();
+  renderDmMsgSeatSelect();
+  renderDmMsgHistory();
+  renderLog();
+  save();
+}
+
+function syncPlayerCount(count) {
+  const cur = state.players.length;
+  if (count === cur) return;
+  if (count > cur) {
+    for (let i = cur; i < count; i++) {
+      state.players.push({ id: Date.now() + i, name: '玩家' + (i + 1), role: null, belief: null, alive: true, marks: [] });
+    }
+    addLog(`人数调整为 ${count} 人，新增 ${count - cur} 个座位`);
+  } else {
+    const removed = state.players.splice(count);
+    addLog(`人数调整为 ${count} 人，移除 ${removed.length} 个座位`);
+    state.accounts = state.accounts.filter(a => a.seatId <= count);
+  }
+  render();
+  broadcastPublicState();
+}
+function newGame(count) {
+  state.players = Array.from({ length: count }, (_, i) => ({
+    id: i, name: '玩家' + (i + 1), role: null, belief: null, alive: true, marks: []
+  }));
+  state.pool = [];
+  state.bluff = [null, null, null];
+  state.log = [];
+  state.night = 'first';
+  state.currentNight = 1;
+  state.phase = 'night';
+  state.nightLogs = [];
+  state.votes = [];
+  state.accounts = [];
+  state.dmMessages = [];
+  voteNomineeId = null;
+  voteNominatorId = null;
+  voteYesSet.clear();
+  pendingActions = [];
+  state.submitted = {};
+  seatOccupancy.clear();
+  lastSnapshot = snapshotPlayers();
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.night === 'first'));
+  render();
+  broadcastPublicState();
+}
+function autoFillPool() {
+  const n = state.players.length;
+  const cfg = TABLE[n];
+  if (!cfg) return alert('该人数暂不支持自动配板');
+  const poolByTeam = { townsfolk: [], outsider: [], minion: [], demon: [] };
+  for (const [id, r] of Object.entries(ROLES)) poolByTeam[r.team].push(id);
+  let tf = cfg.townsfolk, out = cfg.outsider;
+  const useBaron = cfg.minion >= 1 && Math.random() < 0.35;
+  const minions = useBaron
+    ? ['baron', ...shuffle(poolByTeam.minion.filter(x => x !== 'baron')).slice(0, cfg.minion - 1)]
+    : shuffle([...poolByTeam.minion]).slice(0, cfg.minion);
+  if (useBaron) { out += 2; tf -= 2; }
+  const outsiders = shuffle([...poolByTeam.outsider]).slice(0, out);
+  const townsfolk = shuffle([...poolByTeam.townsfolk]).slice(0, tf);
+  const demons = shuffle([...poolByTeam.demon]).slice(0, 1);
+  state.pool = [...townsfolk, ...outsiders, ...minions, ...demons];
+  const remainingTF = unusedTownsfolk().map(c => c.id);
+  state.bluff = shuffle([...remainingTF]).slice(0, 3);
+  while (state.bluff.length < 3) state.bluff.push(null);
+  addLog('⚙️ 已按人数自动填充角色池与恶魔伪装');
+  render();
+}
+function clearPool() { state.pool = []; state.bluff = [null, null, null]; render(); }
+function dealFromPool() {
+  const v = validatePool();
+  if (!v.ok) { if (!confirm(`角色池未通过校验（${v.msg}）。仍要强制分发吗？`)) return; }
+  if (!state.pool.length) { alert('角色池为空，请先选择角色'); return; }
+  const shuffled = shuffle([...state.pool]);
+  state.players.forEach((p, i) => {
+    p.role = shuffled[i] || null;
+    p.alive = true;
+    p.marks = [];
+    p.belief = (p.role === 'drunk') ? pickDrunkBelief() : null;
+  });
+  lastSnapshot = snapshotPlayers();
+  addLog('🎲 已根据角色池随机分发到座位');
+  render();
+  broadcastPublicState();
+}
+function clearSeats() {
+  if (!confirm('清空所有座位的玩家名、角色与状态？角色池会保留。')) return;
+  state.players.forEach(p => { p.role = null; p.belief = null; p.marks = []; p.alive = true; });
+  lastSnapshot = snapshotPlayers();
+  addLog('🧹 已清空座位角色与状态');
+  render();
+  broadcastPublicState();
+}
+
+let dmChannel = null;
+let spectatorClients = new Set();  // 已通过密码验证的旁观客户端
+function broadcastPublicState() {
+  if (!dmChannel) return;
+  dmChannel.send('public_state', buildPublicState(state));
+  if (state.spectator && state.spectator.enabled && spectatorClients.size) {
+    const base = buildGrimoire();
+    spectatorClients.forEach((cid) => {
+      dmChannel.send('grimoire', Object.assign({}, base, { clientId: cid }));
+    });
+  }
+}
+
+/* 旁观者能看到的完整魔典（只读快照） */
+function buildGrimoire() {
+  return {
+    room: getRoomCode(),
+    currentNight: state.currentNight,
+    phase: state.phase,
+    night: state.night,
+    players: state.players.map((p, i) => ({
+      seat: i + 1, name: p.name, alive: p.alive,
+      role: p.role || null,
+      roleName: p.role ? ROLES[p.role].name : '',
+      team: p.role ? ROLES[p.role].team : '',
+      beliefName: (p.role === 'drunk' && p.belief) ? ROLES[p.belief].name : '',
+      marks: [...p.marks],
+      taken: state.accounts.some(a => a.seatId === i + 1)
+    })),
+    pool: state.pool.map(id => ROLES[id] ? ROLES[id].name : id),
+    bluff: state.bluff.filter(Boolean).map(id => ROLES[id] ? ROLES[id].name : id),
+    log: state.log.slice(-40),
+    pending: pendingActions.map(a => ({
+      name: playerNameById(a.seatId),
+      roleName: a.roleId && ROLES[a.roleId] ? ROLES[a.roleId].name : '',
+      actionType: a.actionType,
+      targets: (a.targetSeats || []).map(id => playerNameById(id))
+    }))
+  };
+}
+/* 用「座位号」作为统一约定发给玩家（1 起），避免 p.id 与座位号不一致 */
+function broadcastRoleToSeat(seatId, silent) {
+  if (!dmChannel) return false;
+  const p = state.players.find(x => String(x.id) === String(seatId));
+  if (!p || !p.role) return false;
+  const seatNo = state.players.indexOf(p) + 1;
+  const shown = displayRoleOf(p);
+  dmChannel.send('assign_role', { seatId: seatNo, roleId: shown, roleName: ROLES[shown].name });
+  if (!silent) addLog(`📤 已向 ${p.name} 发送角色信息`);
+  return true;
+}
+
+/* 给某个座位发一条私信（会进历史记录，玩家刷新也能看到） */
+function sendPrivateMsg(seatNo, text) {
+  if (!dmChannel) return false;
+  const seat = Number(seatNo);
+  const t = new Date().toLocaleTimeString();
+  state.dmMessages.push({ seatId: seat, text, night: state.currentNight, time: t });
+  dmChannel.send('dm_message', { seatId: seat, text, night: state.currentNight, time: t });
+  addNightLine(state.currentNight, `私信 ${playerNameById(seat - 1)}：${text}`, 'dm');
+  addLog(`📨 已私信 ${playerNameById(seat - 1)}：${text}`);
+  return true;
+}
+
+/* 恶魔 ↔ 爪牙互认
+   规则：恶魔只知道爪牙在谁身上（不给具体角色）；爪牙只知道谁是恶魔（不给具体角色）；
+   爪牙之间不互认。includeRecluse = 把隐士也当成爪牙告诉恶魔 */
+function tellEvilTeam(includeRecluse) {
+  if (!dmChannel) return 0;
+  const seatOf = (p) => state.players.indexOf(p) + 1;
+  const where = (p) => `${seatOf(p)} 号 ${p.name}`;
+
+  const evil = state.players.filter(p => p.role && (ROLES[p.role].team === 'minion' || ROLES[p.role].team === 'demon'));
+  if (!evil.length) return 0;
+
+  const demons = evil.filter(p => ROLES[p.role].team === 'demon');
+  const minions = evil.filter(p => ROLES[p.role].team === 'minion');
+  const recluses = includeRecluse ? state.players.filter(p => p.role === 'recluse') : [];
+
+  let n = 0;
+  evil.forEach(p => {
+    let text = '';
+    if (ROLES[p.role].team === 'demon') {
+      const list = [...minions, ...recluses].map(where);
+      text = `😈 你是恶魔。你的爪牙在：${list.length ? list.join('、') : '（场上没有爪牙）'}`;
+      if (recluses.length) text += '（其中隐士可能被登记为邪恶）';
+    } else {
+      text = `😈 你是爪牙。恶魔在：${demons.length ? demons.map(where).join('、') : '（未知）'}`;
+    }
+    if (sendPrivateMsg(seatOf(p), text)) n++;
+  });
+  addLog(`😈 已向 ${n} 名邪恶玩家发送互认信息`);
+  return n;
+}
+
+/* 把某个座位的全部私信补发一遍（玩家刷新/重登后用） */
+function sendDmHistory(seatId) {
+  if (!dmChannel) return;
+  const list = (state.dmMessages || []).filter(m => Number(m.seatId) === Number(seatId));
+  dmChannel.send('dm_history', { seatId: Number(seatId), messages: list });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const stage = document.getElementById('stage');
+  const feedback = document.getElementById('voteFeedback');
+  const dmMsgFeedback = document.getElementById('dmMsgFeedback');
+
+  /* 房间号 + 换房间 */
+  const roomLabel = document.getElementById('roomLabel');
+  if (roomLabel) roomLabel.textContent = getRoomCode();
+  const roomPill = document.getElementById('roomPill');
+  if (roomPill) roomPill.addEventListener('click', () => {
+    const cur = getRoomCode();
+    const v = prompt('当前房间：' + cur + '\n\n输入新的房间号（字母/数字，最多 32 位）：', cur);
+    if (v === null) return;
+    const r = String(v).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+    if (!r || r === cur) return;
+    if (!confirm(`换到房间「${r}」？\n\n页面会重新加载，主持人存档不会丢，玩家需要换成同一个房间号。`)) return;
+    switchRoom(r);
+  });
+
+  function showFeedback(el, msg, ok) {
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = ok ? 'var(--ok)' : 'var(--err)';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.textContent = ''; }, 2500);
+  }
+
+  dmChannel = openChannel((msg) => {
+    if (!msg || !msg.type) return;
+
+    if (msg.type === 'player_login') {
+      const { seatId, username, password, playerId } = msg.payload || {};
+      const seat = Number(seatId);
+      if (!seat || seat < 1 || seat > state.players.length) {
+        dmChannel.send('login_failed', { reason: '座位号不存在', playerId });
+        return;
+      }
+      const p = state.players[seat - 1];
+      let acc = state.accounts.find(a => a.seatId === seat);
+
+      if (!acc) {
+        if (state.accounts.some(a => a.username === username)) {
+          dmChannel.send('login_failed', { reason: '用户名已被其他座位使用', playerId });
+          return;
+        }
+        acc = { seatId: seat, username, password, playerId };
+        state.accounts.push(acc);
+        seatOccupancy.set(seat, { playerId, username });
+      } else {
+        const samePlayer = acc.playerId === playerId;
+        if (acc.username !== username || (acc.password !== password && !samePlayer)) {
+          dmChannel.send('login_failed', { reason: '用户名或密码错误', playerId });
+          return;
+        }
+        acc.playerId = playerId;
+        seatOccupancy.set(seat, { playerId, username });
+      }
+
+      p.name = username;
+      const shownRole = displayRoleOf(p);
+      dmChannel.send('login_ok', { seatId: seat, playerId, roleId: shownRole || null,
+        roleName: shownRole ? ROLES[shownRole].name : '',
+        submitted: Number(state.submitted[seat]) === Number(state.currentNight) });
+      sendDmHistory(seat);
+      addLog(`🔐 座位 ${seat} 登录：${username}`);
+      renderSeats();
+      renderComp();
+      renderVotePanel();
+      renderDmMsgSeatSelect();
+      save();
+      broadcastPublicState();
+    }
+
+    /* 大厅入座：玩家在圆桌上点空位坐下（同一账号可以换座位） */
+    else if (msg.type === 'claim_seat') {
+      const { seatId, username, password, playerId } = msg.payload || {};
+      const seatNo = Number(seatId) + 1;
+      if (!seatNo || seatNo < 1 || seatNo > state.players.length) {
+        dmChannel.send('claim_failed', { reason: '座位不存在', playerId });
+        return;
+      }
+      if (!username || !password) {
+        dmChannel.send('claim_failed', { reason: '用户名或密码不能为空', playerId });
+        return;
+      }
+      /* 目标座位不能是别人坐着的 */
+      const occupant = state.accounts.find(a => a.seatId === seatNo);
+      const existing = state.accounts.find(a => a.username === username);
+      if (occupant && occupant.username !== username) {
+        dmChannel.send('claim_failed', { reason: `座位 ${seatNo} 已经有人了`, playerId });
+        return;
+      }
+      /* 同名但密码不对 → 不是同一个人 */
+      if (existing && existing.password !== password) {
+        dmChannel.send('claim_failed', { reason: '这个用户名已经被别人占用了，换一个', playerId });
+        return;
+      }
+      /* 同一个人换座位：搬过去，并把旧座位清空 */
+      if (existing && existing.seatId !== seatNo) {
+        const oldNo = existing.seatId;
+        state.accounts = state.accounts.filter(a => a !== existing);
+        seatOccupancy.delete(oldNo);
+        const oldP = state.players[oldNo - 1];
+        if (oldP) oldP.name = '玩家' + oldNo;
+        addLog(`🔀 ${username} 从座位 ${oldNo} 换到座位 ${seatNo}（原座位角色不跟随）`);
+      }
+      state.accounts = state.accounts.filter(a => a.seatId !== seatNo);
+      state.accounts.push({ seatId: seatNo, username, password, playerId });
+      seatOccupancy.set(seatNo, { playerId, username });
+      const np = state.players[seatNo - 1];
+      np.name = username;
+      const npRole = displayRoleOf(np);
+      dmChannel.send('login_ok', {
+        seatId: seatNo, playerId, roleId: npRole || null,
+        roleName: npRole ? ROLES[npRole].name : '',
+        submitted: Number(state.submitted[seatNo]) === Number(state.currentNight)
+      });
+      sendDmHistory(seatNo);
+      addLog(`🔐 座位 ${seatNo} 入座：${username}`);
+      renderSeats();
+      renderComp();
+      renderVotePanel();
+      renderDmMsgSeatSelect();
+      save();
+      broadcastPublicState();
+    }
+
+    else if (msg.type === 'player_action') {
+      const a = msg.payload || {};
+      const seatNo = Number(a.seatId) + 1;
+      const acc = state.accounts.find(x => x.seatId === seatNo);
+      if (!acc || acc.playerId !== a.playerId) {
+        dmChannel.send('action_rejected', { reason: '身份校验失败，请重新登录', id: a.id });
+        return;
+      }
+      a.id = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      /* 同一个座位一夜只能提交一次（刷新/重登也不例外） */
+      if (Number(state.submitted[seatNo]) === Number(state.currentNight)) {
+        dmChannel.send('action_rejected', {
+          reason: '本夜你已经提交过行动了，等待 DM 处理（刷新不会丢失）', id: a.id, keepSubmitted: true
+        });
+        return;
+      }
+      const dup = pendingActions.find(x =>
+        String(x.seatId) === String(a.seatId) &&
+        JSON.stringify(x.targetSeats) === JSON.stringify(a.targetSeats) &&
+        x.actionType === a.actionType &&
+        Math.abs(x.ts - a.ts) < 2000
+      );
+      if (!dup) {
+        pendingActions.push(a);
+        /* 按夜晚行动顺序排好，方便 DM 依次确认（僧侣在恶魔之前） */
+        pendingActions.sort((x, y) => nightOrderRank(x.roleId) - nightOrderRank(y.roleId));
+        state.submitted[seatNo] = state.currentNight;
+        save();
+        renderPending();
+        addLog(`📨 收到 ${playerNameById(a.seatId)} 的行动：${a.actionType} → ${(a.targetSeats||[]).map(id=>playerNameById(id)).join('、')}`);
+      }
+    }
+
+    /* 玩家刷新页面 / 换设备后主动索取一次完整状态 */
+    else if (msg.type === 'request_state') {
+      broadcastPublicState();
+      const sid = msg.payload && msg.payload.seatId;
+      if (sid !== null && sid !== undefined && sid !== '') {
+        broadcastRoleToSeat(Number(sid));
+        sendDmHistory(Number(sid) + 1);
+      }
+    }
+
+    /* 旁观者入场：校验密码，通过后推一次完整魔典 */
+    else if (msg.type === 'spectator_join') {
+      const pw = String((msg.payload && msg.payload.password) || '');
+      const cid = String((msg.payload && msg.payload.clientId) || '');
+      if (!state.spectator || !state.spectator.enabled) {
+        dmChannel.send('spectator_denied', { reason: 'DM 还没开启旁观视角', clientId: cid });
+        return;
+      }
+      if (pw !== String(state.spectator.password)) {
+        dmChannel.send('spectator_denied', { reason: '旁观密码不对', clientId: cid });
+        return;
+      }
+      if (!spectatorClients.has(cid)) addLog('👁 旁观者已接入');
+      spectatorClients.add(cid);
+      const snap = buildGrimoire();
+      snap.clientId = cid;
+      dmChannel.send('grimoire', snap);
+    }
+
+    /* 刚连上（或断线重连成功）时，把公共状态整体推一遍；各玩家端连上后自己来要角色 */
+    else if (msg.type === '__connected__') {
+      broadcastPublicState();
+    }
+  });
+
+  document.getElementById('poolGrid').addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    const id = chip.dataset.role;
+    const idx = state.pool.indexOf(id);
+    if (idx >= 0) state.pool.splice(idx, 1); else state.pool.push(id);
+    render();
+  });
+
+  document.getElementById('bluffSlots').addEventListener('change', e => {
+    const sel = e.target.closest('select[data-slot]');
+    if (!sel) return;
+    const i = Number(sel.dataset.slot);
+    state.bluff[i] = sel.value || null;
+    renderBluff();
+    save();
+  });
+
+  stage.addEventListener('input', e => {
+    if (!e.target.classList.contains('seat-name')) return;
+    const p = state.players.find(x => String(x.id) === String(e.target.dataset.id));
+    if (p) {
+      p.name = e.target.value;
+      save();
+      renderComp();
+      renderNightOrder();
+      rebuildVoteSelects();
+      renderVotePlayers();
+      renderVoteResult();
+      renderDmMsgSeatSelect();
+    }
+  });
+
+  stage.addEventListener('change', e => {
+    if (!e.target.classList.contains('seat-role')) return;
+    const p = state.players.find(x => String(x.id) === String(e.target.dataset.id));
+    if (p) {
+      p.role = e.target.value || null;
+      p.belief = (p.role === 'drunk') ? (p.belief || pickDrunkBelief()) : null;
+      if (p.role === 'drunk') broadcastRoleToSeat(p.id);
+      render();
+      broadcastPublicState();
+    }
+  });
+
+  stage.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const p = state.players.find(x => String(x.id) === String(btn.dataset.id));
+    if (!p) return;
+
+    if (btn.classList.contains('death-btn')) {
+      p.alive = !p.alive;
+      addLog(`${p.name} ${p.alive ? '复活' : '标记死亡'}`);
+      renderSeats(); renderVotePlayers(); renderVoteResult(); renderNightOrder(); renderComp();
+      save(); broadcastPublicState();
+    } else if (btn.classList.contains('mark')) {
+      const m = btn.dataset.mark;
+      const i = p.marks.indexOf(m);
+      if (i >= 0) p.marks.splice(i, 1); else p.marks.push(m);
+      renderSeats();
+      save();
+      broadcastPublicState();
+    } else if (btn.classList.contains('tell-role')) {
+      broadcastRoleToSeat(p.id);
+      showFeedback(feedback, `已向 ${p.name} 发送角色`, true);
+    } else if (btn.classList.contains('release-seat')) {
+      const seatNo = Number(btn.dataset.seat);
+      state.accounts = state.accounts.filter(a => a.seatId !== seatNo);
+      seatOccupancy.delete(seatNo);
+      p.name = '玩家' + seatNo;
+      addLog(`🔓 已释放座位 ${seatNo} 的账号`);
+      renderSeats();
+      save();
+      broadcastPublicState();
+    }
+  });
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.night = tab.dataset.night;
+      renderNightOrder();
+      save();
+    });
+  });
+
+  document.getElementById('countSel').addEventListener('change', e => {
+    syncPlayerCount(parseInt(e.target.value, 10));
+  });
+
+  document.getElementById('btnNextNight').addEventListener('click', () => {
+    if (!state.players.length) { alert('还没有玩家'); return; }
+    if (!confirm(`结束第 ${state.currentNight} 夜/天，进入第 ${state.currentNight + 1} 夜？\n将自动汇总本次状态变化并清除中毒/醉酒/保护。`)) return;
+    advanceNight();
+  });
+
+  document.getElementById('btnNew').addEventListener('click', () => {
+    const n = parseInt(document.getElementById('countSel').value, 10);
+    if (!confirm(`开始新游戏（${n} 人）？当前进度、夜记录、投票、账号与私信将被清空。`)) return;
+    newGame(n);
+  });
+
+  document.getElementById('btnClearSeats').addEventListener('click', clearSeats);
+
+  /* ---------- 旁观者视角：信息条 + 复制 ---------- */
+  function specLinkUrl() {
+    try { return new URL('spectator.html?room=' + getRoomCode(), location.href).href; }
+    catch (e) { return 'spectator.html?room=' + getRoomCode(); }
+  }
+  function showSpecMsg(t) {
+    const el = document.getElementById('specMsg');
+    if (!el) return;
+    el.textContent = t;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.textContent = ''; }, 2500);
+  }
+  function fallbackCopy(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.setAttribute('readonly', '');
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    if (ok) done(); else prompt('长按复制下面的内容：', text);
+  }
+  function copyText(text, okText) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => showSpecMsg(okText || '已复制'),
+        () => fallbackCopy(text, () => showSpecMsg(okText || '已复制'))
+      );
+    } else {
+      fallbackCopy(text, () => showSpecMsg(okText || '已复制'));
+    }
+  }
+  function renderSpecBar() {
+    const bar = document.getElementById('specBar');
+    if (!bar) return;
+    const on = !!(state.spectator && state.spectator.enabled && state.spectator.password);
+    bar.classList.toggle('hidden', !on);
+    if (!on) return;
+    document.getElementById('specPw').textContent = state.spectator.password;
+    const linkEl = document.getElementById('specLink');
+    linkEl.textContent = specLinkUrl();
+    linkEl.title = specLinkUrl();
+  }
+  renderSpecBar();
+
+  document.getElementById('btnCopyPw').addEventListener('click', () => {
+    copyText(String(state.spectator.password || ''), '密码已复制');
+  });
+  document.getElementById('btnCopyLink').addEventListener('click', () => {
+    copyText(specLinkUrl(), '链接已复制');
+  });
+  document.getElementById('btnSpecNewPw').addEventListener('click', () => {
+    const v = prompt('输入新的旁观密码（留空取消）：', state.spectator.password);
+    if (v === null) return;
+    const nv = String(v).trim();
+    if (!nv) return;
+    state.spectator.password = nv;
+    spectatorClients = new Set();
+    save();
+    renderSpecBar();
+    addLog('👁 旁观密码已更新（已接入的旁观者需重新输入）');
+    showSpecMsg('密码已更新');
+  });
+  document.getElementById('btnSpecOff').addEventListener('click', () => {
+    if (!confirm('关闭旁观视角？已接入的旁观者将立刻断开。')) return;
+    state.spectator = { enabled: false, password: '' };
+    spectatorClients = new Set();
+    save();
+    renderSpecBar();
+    addLog('👁 已关闭旁观视角');
+    broadcastPublicState();
+  });
+
+  /* 顶部按钮：未开启则开启，已开启则显示信息条 */
+  document.getElementById('btnSpectator').addEventListener('click', () => {
+    if (state.spectator && state.spectator.enabled && state.spectator.password) {
+      document.getElementById('specBar').classList.remove('hidden');
+      renderSpecBar();
+      showSpecMsg('密码在信息条上，可直接复制');
+      return;
+    }
+    const pw = Math.random().toString(36).slice(2, 5) + Math.random().toString(36).slice(2, 5);
+    state.spectator = { enabled: true, password: pw };
+    spectatorClients = new Set();
+    save();
+    renderSpecBar();
+    addLog('👁 已开启旁观视角');
+    broadcastPublicState();
+  });
+  document.getElementById('btnAutoFill').addEventListener('click', autoFillPool);
+  document.getElementById('btnClearPool').addEventListener('click', clearPool);
+  document.getElementById('btnDeal').addEventListener('click', dealFromPool);
+
+  /* 一键把每个座位的角色发出去 */
+  document.getElementById('btnTellAll').addEventListener('click', () => {
+    const list = state.players.filter(p => p.role);
+    if (!list.length) { alert('还没有分配角色，先点「🎲 随机分发到座位」'); return; }
+    if (!dmChannel) { alert('还没连上服务器，等右下角变成「已连接」再试'); return; }
+    if (!confirm(`向 ${list.length} 个座位发送各自角色？\n（没登录的玩家会在下次登录时收到）`)) return;
+    let n = 0;
+    list.forEach(p => { if (broadcastRoleToSeat(p.id, true)) n++; });
+    addLog(`📤 一键告知角色：已向 ${n} 个座位发送`);
+    showFeedback(feedback, `已向 ${n} 个座位发送角色`, true);
+    renderSeats();
+  });
+
+  /* 恶魔 ↔ 爪牙互认（隐士是否算进去，说书人决定） */
+  document.getElementById('btnTellEvil').addEventListener('click', () => {
+    if (!dmChannel) { alert('还没连上服务器，等右下角变成「已连接」再试'); return; }
+    const evilCount = state.players.filter(p => p.role && (ROLES[p.role].team === 'minion' || ROLES[p.role].team === 'demon')).length;
+    if (!evilCount) { alert('还没有分配恶魔或爪牙'); return; }
+
+    const hasRecluse = state.players.some(p => p.role === 'recluse');
+    let includeRecluse = false;
+    if (hasRecluse) {
+      includeRecluse = confirm('场上有隐士。要把隐士的位置也当成爪牙告诉恶魔吗？\n\n确定 = 算进去（隐士登记为邪恶）\n取消 = 只告诉真爪牙');
+    }
+    if (!confirm(`向 ${evilCount} 名邪恶玩家发送互认信息？\n\n恶魔只被告知「爪牙在谁身上」（不显示具体角色）。\n爪牙只被告知「谁是恶魔」（不显示具体角色，也不认识其他爪牙）。`)) return;
+
+    const n = tellEvilTeam(includeRecluse);
+    showFeedback(feedback, `已向 ${n} 名邪恶玩家发送互认信息`, true);
+    renderDmMsgHistory();
+    renderNightLogs();
+    save();
+  });
+
+  document.getElementById('btnAddNote').addEventListener('click', () => {
+    const nl = ensureNightLog(state.currentNight);
+    const text = prompt(`给「${nightTitle(state.currentNight)}」添加一条备注（可留空取消）：`);
+    if (!text || !text.trim()) return;
+    nl.lines.push({ text: text.trim(), tag: 'night' });
+    addLog(`📝 ${nightTitle(state.currentNight)}：${text.trim()}`);
+    renderNightLogs();
+    save();
+  });
+
+  document.getElementById('nightLogList').addEventListener('click', e => {
+    const addBtn = e.target.closest('.add-night-line');
+    const delNightBtn = e.target.closest('.del-night');
+    const delLineBtn = e.target.closest('.del-line');
+    if (addBtn) {
+      const idx = Number(addBtn.dataset.night);
+      const nl = state.nightLogs[idx];
+      if (!nl) return;
+      const text = prompt(`给「${nightTitle(nl.night)}」添加一条备注：`);
+      if (!text || !text.trim()) return;
+      nl.lines.push({ text: text.trim(), tag: 'night' });
+      addLog(`📝 ${nightTitle(nl.night)}：${text.trim()}`);
+      renderNightLogs(); save(); return;
+    }
+    if (delNightBtn) {
+      const idx = Number(delNightBtn.dataset.night);
+      const nl = state.nightLogs[idx];
+      if (!nl) return;
+      if (!confirm(`删除「${nightTitle(nl.night)}」的全部记录？`)) return;
+      state.nightLogs.splice(idx, 1);
+      addLog(`🗑️ 删除 ${nightTitle(nl.night)} 记录`);
+      renderNightLogs(); save(); return;
+    }
+    if (delLineBtn) {
+      const ni = Number(delLineBtn.dataset.night);
+      const li = Number(delLineBtn.dataset.line);
+      const nl = state.nightLogs[ni];
+      if (!nl || !nl.lines[li]) return;
+      nl.lines.splice(li, 1);
+      renderNightLogs(); save();
+    }
+  });
+
+  document.getElementById('pendingList').addEventListener('click', e => {
+    const approve = e.target.closest('[data-approve]');
+    const reject = e.target.closest('[data-reject]');
+    if (approve) {
+      const i = Number(approve.dataset.approve);
+      const a = pendingActions[i];
+      if (!a) return;
+      const resultInput = document.querySelector(`.pending-result[data-index="${i}"]`);
+      const extraResult = resultInput ? resultInput.value : '';
+      const offChk = document.querySelector(`.pending-disabled[data-index="${i}"]`);
+      applyPendingAction(a, extraResult, offChk ? offChk.checked : undefined);
+      pendingActions.splice(i, 1);
+      dmChannel.send('action_result', { status: 'approved', id: a.id, playerId: a.playerId, seatId: a.seatId });
+      render();
+      broadcastPublicState();
+      return;
+    }
+    if (reject) {
+      const i = Number(reject.dataset.reject);
+      const a = pendingActions[i];
+      pendingActions.splice(i, 1);
+      if (a) {
+        dmChannel.send('action_result', { status: 'rejected', id: a.id, playerId: a.playerId, seatId: a.seatId });
+        /* 驳回后放行，让这个座位可以重新提交 */
+        delete state.submitted[Number(a.seatId) + 1];
+        save();
+      }
+      renderPending();
+      addLog('❌ 已驳回一条玩家行动');
+    }
+  });
+
+  document.getElementById('btnSendDmMsg').addEventListener('click', () => {
+    const seat = Number(document.getElementById('dmMsgSeat').value);
+    const text = document.getElementById('dmMsgText').value.trim();
+    if (!seat) return showFeedback(dmMsgFeedback, '请选择座位', false);
+    if (!text) return showFeedback(dmMsgFeedback, '请输入信息内容', false);
+
+    sendPrivateMsg(seat, text);
+    document.getElementById('dmMsgText').value = '';
+    showFeedback(dmMsgFeedback, '已发送', true);
+    renderDmMsgHistory();
+    renderNightLogs();
+    save();
+  });
+
+  document.getElementById('voteNominee').addEventListener('change', e => {
+    const v = e.target.value;
+    voteNomineeId = v === '' ? null : v;
+    if (voteNomineeId != null && voteNominatorId != null && String(voteNomineeId) === String(voteNominatorId)) {
+      voteNominatorId = null;
+      document.getElementById('voteNominator').value = '';
+    }
+    renderVoteResult();
+  });
+  document.getElementById('voteNominator').addEventListener('change', e => {
+    const v = e.target.value;
+    voteNominatorId = v === '' ? null : v;
+    if (voteNomineeId != null && voteNominatorId != null && String(voteNomineeId) === String(voteNominatorId)) {
+      voteNomineeId = null;
+      document.getElementById('voteNominee').value = '';
+    }
+    renderVoteResult();
+  });
+  document.getElementById('votePlayers').addEventListener('click', e => {
+    const chip = e.target.closest('.vote-chip');
+    if (!chip || chip.disabled) return;
+    const id = chip.dataset.pid;
+    const pid = state.players.find(p => String(p.id) === String(id))?.id;
+    if (pid == null) return;
+    if (voteYesSet.has(pid)) voteYesSet.delete(pid); else voteYesSet.add(pid);
+    renderVotePlayers(); renderVoteResult();
+  });
+  document.getElementById('btnClearVote').addEventListener('click', () => {
+    voteNomineeId = null; voteNominatorId = null; voteYesSet.clear();
+    document.getElementById('voteNominee').value = '';
+    document.getElementById('voteNominator').value = '';
+    renderVotePlayers(); renderVoteResult();
+  });
+  document.getElementById('btnRecordVote').addEventListener('click', () => {
+    if (voteNomineeId == null) { showFeedback(feedback, '请先选择被提名者', false); return; }
+    if (voteNominatorId == null) { showFeedback(feedback, '请先选择提名者', false); return; }
+    if (String(voteNomineeId) === String(voteNominatorId)) { showFeedback(feedback, '被提名者与提名者不能是同一人', false); return; }
+    const info = currentVoteInfo();
+    if (!info.yes.length) { if (!confirm('当前没有任何赞成票，仍要记录吗？')) return; }
+    const nightNo = state.currentNight;
+    const nomineeName = playerNameById(info.nominee);
+    state.votes.push({
+      night: nightNo, nominee: info.nominee, nominator: info.nominator,
+      yes: [...info.yes], need: info.need, aliveCount: info.aliveCount, passed: info.passed
+    });
+    const voteLine = info.passed
+      ? `${nomineeName} 被投票处决（${info.yes.length}/${info.need} 票）`
+      : `${nomineeName} 的提名未通过（${info.yes.length}/${info.need} 票）`;
+    addNightLine(nightNo, voteLine, 'vote');
+    if (info.passed) {
+      const p = state.players.find(x => x.id == info.nominee);
+      if (p) p.alive = false;
+    }
+    voteNomineeId = null; voteNominatorId = null; voteYesSet.clear();
+    document.getElementById('voteNominee').value = '';
+    document.getElementById('voteNominator').value = '';
+    addLog(`⚖️ 第 ${nightNo} 天：${voteLine}`);
+    showFeedback(feedback, '投票已记录', true);
+    render(); broadcastPublicState();
+  });
+  document.getElementById('voteHistory').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-del-vote]');
+    if (!btn) return;
+    const idx = Number(btn.dataset.delVote);
+    if (!state.votes[idx]) return;
+    if (!confirm('删除这条投票记录？（不会撤销处决状态）')) return;
+    state.votes.splice(idx, 1);
+    renderVoteHistory(); save();
+  });
+
+  const logInput = document.getElementById('logInput');
+  document.getElementById('btnLog').addEventListener('click', () => { addLog(logInput.value); logInput.value = ''; });
+  logInput.addEventListener('keydown', e => { if (e.key === 'Enter') { addLog(logInput.value); logInput.value = ''; } });
+
+  window.addEventListener('resize', layoutSeats);
+  if (window.ResizeObserver) new ResizeObserver(() => layoutSeats()).observe(stage);
+
+  load();
+  if (!state.players.length) {
+    newGame(8);
+  } else {
+    document.getElementById('countSel').value = state.players.length;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.night === state.night));
+    lastSnapshot = snapshotPlayers();
+    render();
+    broadcastPublicState();
+  }
+});
+</script>
+</body>
+</html>

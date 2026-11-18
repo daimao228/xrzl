@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>血染钟楼 · 玩家端</title>
+<style>
+:root {
+  --bg:#2a2436; --panel:#352e43; --line:#574d70;
+  --text:#f4ede0; --muted:#c0b5a3; --gold:#e8c65c; --blood:#8b1220;
+}
+html { background: var(--bg); }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  margin: 0; padding: 20px 14px; min-height: 100vh; font-size: 14px;
+  color: var(--text);
+  background:
+    radial-gradient(900px 480px at 50% -6%, rgba(139,18,32,.22), transparent 60%),
+    radial-gradient(700px 420px at 105% 108%, rgba(212,175,55,.07), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+.card { max-width:520px; margin:0 auto; padding:18px; position:relative; overflow:hidden;
+  border:1px solid #4f4667; border-radius:14px;
+  background: linear-gradient(180deg, rgba(66,57,82,.96), rgba(54,46,68,.96));
+  box-shadow: 0 18px 50px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04); }
+.card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,.75), transparent); }
+h1 { font-family:"Songti SC","STSong",Georgia,serif; font-size:17px; letter-spacing:5px; text-align:center;
+  color:var(--gold); text-shadow:0 0 20px rgba(212,175,55,.35); margin:2px 0 16px; }
+label { display:block; font-size:11px; letter-spacing:1px; color:var(--muted); margin-bottom:5px; }
+input, select, button { font-size:14px; padding:7px 10px; border-radius:8px; font-family:inherit;
+  border:1px solid #574d70; background:#302a3d; color:var(--text); outline:none; }
+input:focus, select:focus { border-color: rgba(212,175,55,.7); box-shadow:0 0 0 2px rgba(212,175,55,.12); }
+button { cursor:pointer; transition:.15s; }
+button:hover { border-color: rgba(212,175,55,.7); color:var(--gold); }
+button.primary { background: linear-gradient(180deg,#c8a335,#8a6a16); border-color:#c9a227; color:#120f08;
+  font-weight:700; letter-spacing:1px; box-shadow:0 4px 16px rgba(212,175,55,.22); }
+button.primary:hover { background: linear-gradient(180deg,#e2bd48,#a07f1c); color:#0b0a06; }
+.row { margin-bottom:12px; }
+
+.role-box { position:relative; margin-bottom:12px; padding:14px 12px 12px; border-radius:10px;
+  border:1px solid rgba(212,175,55,.30);
+  background: linear-gradient(180deg, rgba(74,62,94,.95), rgba(58,49,72,.95));
+  box-shadow: inset 0 0 30px rgba(139,18,32,.12); }
+.role-box::before { content:'你 的 身 份'; position:absolute; top:-7px; left:12px; padding:0 7px;
+  font-size:9px; letter-spacing:3px; color:var(--gold); background:#352e43; border-radius:4px; }
+.role-name { font-family:"Songti SC",Georgia,serif; font-size:19px; letter-spacing:3px; color:#ffeec2;
+  text-shadow:0 0 18px rgba(212,175,55,.25); }
+.role-ability { font-size:12px; line-height:1.65; color:#c3b8a4; margin-top:6px; }
+
+/* ---- 角色图标 ---- */
+.role-ic { position:relative; display:inline-flex; width:1em; height:1em; vertical-align:-.14em; flex-shrink:0; }
+.role-ico { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round; }
+.role-img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0; transition:opacity .15s; }
+.role-ic.has-img .role-img { opacity:1; }
+.role-ic.has-img .role-ico { visibility:hidden; }
+.role-ic.big { width:26px; height:26px; vertical-align:-6px; margin-right:9px; color:var(--gold); }
+
+.msg { font-size:12px; margin-top:8px; }
+.ok { color:#5fbf87; }
+.err { color:#e07070; }
+.hidden { display:none; }
+.night-info { font-size:11px; letter-spacing:1px; color:var(--muted); margin-bottom:10px; }
+.tip { font-size:11px; line-height:1.6; color:#9b9282; margin-top:6px; }
+
+.dm-message-box { margin-bottom:12px; padding:12px; border-radius:10px;
+  border:1px solid rgba(155,107,209,.32); background: linear-gradient(180deg,#3c3152,#2f2640); }
+.dm-message-box .dm-title { font-size:10px; letter-spacing:3px; color:#b98fe0; font-weight:700; margin-bottom:8px; }
+.dm-message-item { font-size:12px; line-height:1.6; padding:5px 0; border-bottom:1px dashed #4f4667; color:#f0e8d8; }
+.dm-message-item:last-child { border-bottom:none; }
+.dm-message-night { color:#9b9282; font-size:10px; margin-right:6px; }
+.target-field { margin-bottom:8px; }
+
+.room-pill { font-size:11px; color:var(--muted); background:#352e43; border:1px solid #574d70;
+  border-radius:20px; padding:3px 10px; cursor:pointer; transition:.15s; user-select:none; white-space:nowrap; }
+.room-pill:hover { border-color: rgba(212,175,55,.7); color:var(--gold); }
+.room-pill b { color:var(--gold); letter-spacing:1px; }
+
+/* ==== 圆桌 ==== */
+.stage-wrap { display:flex; justify-content:center; margin:2px 0 14px; }
+.stage { position:relative; width:100%; max-width:440px; aspect-ratio:1 / 1; margin:0 auto; }
+.stage::before { content:''; position:absolute; left:50%; top:50%; width:56%; height:56%; transform:translate(-50%,-50%);
+  border-radius:50%; border:1px dashed rgba(212,175,55,.26);
+  background: radial-gradient(circle, rgba(139,18,32,.20) 0%, rgba(212,175,55,.05) 48%, transparent 72%);
+  box-shadow: inset 0 0 70px rgba(139,18,32,.16); pointer-events:none; }
+.center-night { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); text-align:center;
+  pointer-events:none; user-select:none; z-index:1; }
+.center-night .cn-label { font-size:10px; color:#a89a78; letter-spacing:3px; margin-bottom:2px; }
+.center-night .cn-num { font-family:Georgia,"Songti SC",serif; font-size:36px; font-weight:800; line-height:1;
+  color:var(--gold); letter-spacing:1px; animation: candle 3.8s ease-in-out infinite; }
+.center-night .cn-sub { font-size:10px; color:#9b9282; margin-top:4px; letter-spacing:1px; }
+@keyframes candle {
+  0%,100% { text-shadow: 0 0 18px rgba(212,175,55,.55), 0 0 46px rgba(139,18,32,.40); }
+  50%     { text-shadow: 0 0 11px rgba(212,175,55,.34), 0 0 28px rgba(139,18,32,.26); }
+}
+.pseat { position:absolute; width:78px; transform:translate(-50%,-50%); text-align:center; z-index:2;
+  padding:5px 5px 4px; border-radius:9px; border:1px solid #2f2a42;
+  background: linear-gradient(180deg,#463d58,#362f46);
+  box-shadow: 0 5px 14px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
+  transition: box-shadow .15s, border-color .15s; }
+.pseat .ps-no { font-size:9px; line-height:1.2; color:#9b9282; letter-spacing:1px; }
+.pseat .ps-name { font-size:11px; font-weight:700; color:#f0e8d8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pseat.me { border-color: rgba(212,175,55,.85); background: linear-gradient(180deg,#5a4a22,#40351a);
+  box-shadow: 0 0 0 1px rgba(212,175,55,.30), 0 0 24px rgba(212,175,55,.28); }
+.pseat.me .ps-no { color:#c9b071; }
+.pseat.me .ps-name::after { content:'你'; display:inline-block; margin-left:4px; font-size:8px; font-weight:700;
+  color:#120f08; background: linear-gradient(180deg,#e8c65c,#a07f1c); border-radius:3px; padding:0 3px; vertical-align:2px; }
+.pseat.dead { opacity:.38; filter: grayscale(.5); }
+.pseat.dead .ps-name { text-decoration:line-through; }
+.pseat.dead .ps-no::after { content:' 💀'; }
+
+input::placeholder { color:#867c6a; }
+::selection { background: rgba(139,18,32,.45); color:#fff; }
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-thumb { background:#574d70; border-radius:3px; }
+
+/* ---------- 花哨装饰层 ---------- */
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:3; opacity:.5;
+  background-image:
+    radial-gradient(1.4px 1.4px at 14% 22%, rgba(212,175,55,.9), transparent 60%),
+    radial-gradient(1.2px 1.2px at 82% 30%, rgba(212,175,55,.7), transparent 60%),
+    radial-gradient(1.7px 1.7px at 40% 76%, rgba(224,120,90,.6), transparent 60%),
+    radial-gradient(1.1px 1.1px at 88% 86%, rgba(212,175,55,.65), transparent 60%);
+  background-size: 460px 460px, 580px 580px, 700px 700px, 620px 620px;
+  animation: emberdrift 46s linear infinite;
+}
+@keyframes emberdrift {
+  from { background-position: 0 0, 0 0, 0 0, 0 0; }
+  to   { background-position: 50px -460px, -70px -580px, 30px -700px, -50px -620px; }
+}
+
+/* 卡片四角角花 */
+.card::before {
+  content:''; position:absolute; left:0; top:0; width:30px; height:30px; pointer-events:none; z-index:1;
+  background: url("assets/corner.svg") left top/contain no-repeat; opacity:.6;
+}
+.card::after {
+  content:''; position:absolute; right:0; bottom:0; width:30px; height:30px; pointer-events:none; z-index:1;
+  background: url("assets/corner.svg") left top/contain no-repeat; opacity:.6;
+  transform: rotate(180deg);
+}
+
+/* 标题下的星菱分隔线 */
+h1 { position:relative; padding-bottom:14px; }
+h1::before { content:none; }
+h1::after {
+  content:''; position:absolute; left:50%; bottom:0; width:170px; height:12px;
+  transform: translateX(-50%);
+  background: url("assets/divider.svg") center/100% 100% no-repeat; opacity:.8;
+}
+
+/* 身份卡右上角火漆印 */
+.role-box::after {
+  content:''; position:absolute; right:4px; top:-16px; width:58px; height:58px; pointer-events:none;
+  background: url("assets/seal.svg") center/contain no-repeat; opacity:.55;
+  transform: rotate(-12deg);
+}
+
+/* 登录按钮扫光 */
+button.primary { position:relative; overflow:hidden; }
+button.primary::after {
+  content:''; position:absolute; top:-20%; left:-60%; width:45%; height:140%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.5), transparent);
+  transform: skewX(-18deg); transition: left .5s ease;
+}
+button.primary:hover::after { left:125%; }
+
+/* 圆桌法阵：素材库符文环 */
+.stage::before {
+  content:''; position:absolute; inset:0; pointer-events:none; border:0; border-radius:0;
+  background: url("assets/runes.svg") center/contain no-repeat;
+  box-shadow:none; opacity:.6;
+  animation: slowspin 320s linear infinite;
+}
+.stage::after { content:''; }
+@keyframes slowspin { to { transform: rotate(360deg); } }
+
+/* 自己座位的心跳光环 */
+.pseat.me { animation: meglow 3.2s ease-in-out infinite; }
+@keyframes meglow {
+  0%,100% { box-shadow: 0 0 0 1px rgba(212,175,55,.30), 0 0 18px rgba(212,175,55,.22); }
+  50%     { box-shadow: 0 0 0 1px rgba(212,175,55,.45), 0 0 30px rgba(212,175,55,.40); }
+}
+
+/* 中心夜数背后的血月 */
+.center-night::before {
+  content:''; position:absolute; left:50%; top:50%; width:150px; height:150px;
+  transform: translate(-50%,-50%); pointer-events:none; border-radius:0;
+  background: url("assets/bloodmoon.svg") center/contain no-repeat;
+  opacity:.55; animation: heartbeat 6s ease-in-out infinite;
+}
+@keyframes heartbeat {
+  0%,100% { transform: translate(-50%,-50%) scale(1); opacity:.75; }
+  50%     { transform: translate(-50%,-50%) scale(1.12); opacity:1; }
+}
+
+@media (max-width: 760px) {
+  body::after { animation: none; opacity: .3; }
+  .stage::after { animation-duration: 260s; }
+  h1 { font-size: 15px; letter-spacing: 3px; }
+  body { padding: 14px 10px; }
+  .card { padding: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* 氛围暗角 */
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:1;
+  background: url("assets/vignette.svg") center/cover no-repeat; opacity:.35;
+}
+/* 阶段图标 */
+.phase-ico { width:14px; height:14px; vertical-align:-2px; opacity:.9; margin-right:3px; }
+/* ============================================================
+   血月玻璃主题：背景图 + 淡白蒙版
+   ============================================================ */
+:root {
+  --bg:#f5efe4; --panel:rgba(255,255,255,.72); --line:rgba(94,78,58,.22);
+  --text:#241d2b; --muted:#6b6270; --gold:#b8860b; --blood:#8e2f2b;
+}
+body {
+  color: var(--text);
+  background:
+    linear-gradient(rgba(255,251,244,.46), rgba(255,251,244,.66)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+body::before { opacity:.25; }
+body::after { opacity:.15; }
+h1 { color:#96700f; text-shadow:none; }
+
+.card {
+  background: rgba(255,255,255,.74);
+  border: 1px solid rgba(94,78,58,.22);
+  box-shadow: 0 18px 44px rgba(70,50,25,.16), inset 0 1px 0 rgba(255,255,255,.7);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.card::before { opacity:.5; }
+.card::after { opacity:.5; }
+h1::after { opacity:.65; }
+
+label { color:#7a705f; }
+input, select, button { background: rgba(255,255,255,.92); color:var(--text); border-color: rgba(94,78,58,.25); }
+input:focus, select:focus { border-color: rgba(184,134,11,.7); box-shadow:0 0 0 2px rgba(184,134,11,.14); }
+button:hover { border-color: rgba(184,134,11,.75); color:#96700f; }
+button.primary { background: linear-gradient(180deg,#c9a227,#a07f1c); color:#17120a; border-color:#a8841a; }
+button.primary:hover { background: linear-gradient(180deg,#dcb63a,#b08c22); color:#120f08; }
+
+.role-box {
+  background: rgba(255,255,255,.78);
+  border: 1px solid rgba(184,134,11,.35);
+  box-shadow: inset 0 0 24px rgba(184,134,11,.08), 0 6px 18px rgba(70,50,25,.10);
+}
+.role-box::before { color:#96700f; background: rgba(255,252,246,.95); }
+.role-name { color:#7d1a1f; text-shadow:none; }
+.role-ability { color:#5f5766; }
+.role-ic.big { color:#8a6b1f; }
+.role-box::after { opacity:.45; }
+
+.msg { color: var(--muted); }
+.ok { color:#2e7d5b; }
+.err { color:#b03a3a; }
+.night-info { color: var(--muted); }
+.tip { color:#7a705f; }
+.dm-message-box { background: rgba(255,255,255,.74); border-color: rgba(125,75,176,.28); }
+.dm-message-box .dm-title { color:#7d4bb0; }
+.dm-message-item { color:#3a3442; border-bottom-color: rgba(94,78,58,.16); }
+.dm-message-night { color:#8d8578; }
+.room-pill { background: rgba(255,255,255,.9); border-color: rgba(94,78,58,.25); }
+.room-pill:hover { border-color: rgba(184,134,11,.7); color:#96700f; }
+.room-pill b { color:#96700f; }
+
+.stage::before { opacity:.3; }
+.center-night::before { display:none; }
+.center-night .cn-num { color:#7d1a1f; text-shadow:0 2px 10px rgba(255,246,236,.9); animation:none; }
+.center-night .cn-label { color:#7a6b52; }
+.center-night .cn-sub { color:#7a705f; }
+.phase-ico { opacity:.75; }
+
+.pseat {
+  background: rgba(255,255,255,.85);
+  border: 1px solid rgba(94,78,58,.2);
+  box-shadow: 0 5px 14px rgba(70,50,25,.14), inset 0 1px 0 rgba(255,255,255,.85);
+}
+.pseat .ps-no { color:#8d8578; }
+.pseat .ps-name { color:#241d2b; }
+.pseat.me {
+  border-color: rgba(184,134,11,.85);
+  background: linear-gradient(180deg,#fff8e4,#fdf1d4);
+  animation: meglow 3.2s ease-in-out infinite;
+}
+.pseat.me .ps-no { color:#96700f; }
+.pseat.me .ps-name::after { background: linear-gradient(180deg,#c9a227,#a07f1c); color:#17120a; }
+.pseat.dead { opacity:.45; filter: grayscale(.4); }
+@keyframes meglow {
+  0%,100% { box-shadow: 0 0 0 1px rgba(184,134,11,.35), 0 0 14px rgba(184,134,11,.18); }
+  50%     { box-shadow: 0 0 0 1px rgba(184,134,11,.55), 0 0 26px rgba(184,134,11,.32); }
+}
+input::placeholder { color:#9a9184; }
+::selection { background: rgba(184,134,11,.25); color:#1c1722; }
+::-webkit-scrollbar-thumb { background: rgba(120,100,70,.35); }
+
+/* ============================================================
+   暗调回归：背景尽量露出，白玻璃只给卡片
+   ============================================================ */
+body {
+  color:#efe7d8;
+  background:
+    linear-gradient(rgba(10,8,14,.18), rgba(10,8,14,.42)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+.card { color:#241d2b; background: rgba(255,255,255,.82); }
+body::after { opacity:.10; }
+
+/* ---------- 圆桌座位大头像 ---------- */
+.pseat { width:94px; padding:6px 5px 5px; }
+.pseat-avatar {
+  width:48px; height:48px; margin:0 auto 4px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background: radial-gradient(circle at 50% 30%, #fffdf8, #ecdfc4);
+  border:2px solid rgba(184,134,11,.35);
+  box-shadow: inset 0 0 14px rgba(184,134,11,.12);
+}
+.pseat-avatar .role-ic { width:40px; height:40px; color:#5a4a2a; }
+.pseat-avatar .avatar-img { width:26px; height:26px; opacity:.45; }
+.pseat.me .pseat-avatar { border-color: rgba(184,134,11,.85); box-shadow: inset 0 0 16px rgba(184,134,11,.2), 0 0 16px rgba(184,134,11,.25); }
+@media (max-width: 760px) {
+  .pseat { width:84px; }
+  .pseat-avatar { width:42px; height:42px; }
+  .pseat-avatar .role-ic { width:34px; height:34px; }
+  .pseat-avatar .avatar-img { width:22px; height:22px; }
+}
+
+/* ---------- 空座位（＋） ---------- */
+.pseat.free { cursor:pointer; border-style:dashed; border-color: rgba(94,78,58,.35); background: rgba(255,255,255,.55); }
+.pseat.free:hover { border-color: rgba(184,134,11,.85); background: rgba(255,255,255,.85);
+  transform: translate(-50%,-50%) scale(1.06); box-shadow: 0 6px 18px rgba(184,134,11,.22); }
+.pseat.free .free-avatar { border-style:dashed; border-color: rgba(94,78,58,.4); background: rgba(255,255,255,.5); }
+.pseat.free .plus { font-size:22px; color:#96700f; line-height:1; font-weight:700; }
+.pseat.free .free-name { color:#8d8578; font-weight:400; }
+
+
+/* ---------- 座位卡尺寸随圆桌自适应 ---------- */
+.pseat {
+  width: var(--seat-w, 94px);
+  padding: calc(var(--seat-w, 94px) * 0.06) calc(var(--seat-w, 94px) * 0.05) calc(var(--seat-w, 94px) * 0.05);
+}
+.pseat-avatar {
+  width: calc(var(--seat-w, 94px) * 0.52);
+  height: calc(var(--seat-w, 94px) * 0.52);
+  margin: 0 auto calc(var(--seat-w, 94px) * 0.05) auto;
+}
+.pseat-avatar .role-ic { width: 82%; height: 82%; }
+.pseat-avatar .avatar-img { width: 55%; height: 55%; }
+.pseat .ps-no { font-size: clamp(8px, calc(var(--seat-w, 94px) * 0.10), 10px); }
+.pseat .ps-name { font-size: clamp(9px, calc(var(--seat-w, 94px) * 0.125), 12px); }
+.pseat.free .plus { font-size: clamp(14px, calc(var(--seat-w, 94px) * 0.26), 24px); }
+
+
+
+/* ---------- 手机端：让圆桌尽量铺满 ---------- */
+@media (max-width:760px) {
+  body { padding:10px 4px 26px; }
+  .card { padding:12px 6px; border-radius:12px; }
+  .stage-wrap { margin:0 -2px 10px; }
+  .stage { max-width:min(97vw, 560px); }
+  .role-box, .dm-message-box { margin-left:2px; margin-right:2px; }
+}
+
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🩸 血染钟楼 · 玩家端</h1>
+
+  <div id="joinBox">
+    <div class="row">
+      <label>房间号（要和主持人的一致）</label>
+      <input id="roomInput" type="text" maxlength="32" spellcheck="false" placeholder="例如 5h4z">
+    </div>
+    <div class="row">
+      <label>用户名</label>
+      <input id="usernameInput" type="text" maxlength="12" placeholder="例如 小明">
+    </div>
+    <div class="row">
+      <label>密码</label>
+      <input id="passwordInput" type="password" maxlength="20" placeholder="自己设一个，用于恢复身份">
+    </div>
+    <button id="btnLogin" class="primary">进入房间</button>
+    <div id="loginMsg" class="msg"></div>
+    <div class="tip">不用先选座位——进入房间后，在圆桌上点一个 <b>＋</b> 就能坐下；有人坐的位置会显示名字。刷新或重新打开会自动回到自己的座位。</div>
+  </div>
+
+  <div id="playBox" class="hidden">
+    <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div style="font-size:12px;color:#7a7a8c;">座位 <b id="mySeatLabel">-</b> · <span id="myNameLabel">-</span></div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span class="room-pill" id="myRoomPill" title="点这里换房间">🚪 <b id="myRoomLabel">-</b></span>
+        <button id="btnLeave" style="font-size:12px;padding:4px 8px;">退出</button>
+      </div>
+    </div>
+    <div class="stage-wrap">
+      <div class="stage" id="stage"></div>
+    </div>
+    <div class="role-box">
+      <div class="role-name" id="myRoleName">—</div>
+      <div class="role-ability" id="myRoleAbility"></div>
+    </div>
+    <div id="nightInfo" class="night-info"></div>
+    <div id="dmMessagesBox" class="dm-message-box hidden">
+      <div class="dm-title">📨 DM 私信</div>
+      <div id="dmMessagesList"></div>
+    </div>
+    <div id="actionBox"></div>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script src="shared.js"></script>
+<script>
+(function () {
+  let mySeatId = null;
+  let myPlayerId = null;
+  let myUsername = '';
+  let myPassword = '';
+  let myRoleId = null;
+  let publicState = { currentNight: 1, phase: 'night', players: [] };
+  let myMessages = [];
+  let submittedThisNight = false;
+  let lastActionTs = 0;
+  let loggedIn = false;
+  let loginTries = 0;
+  let loginTimer = null;
+
+  const SESSION_KEY = 'botc_player_session';
+
+  const ch = openChannel((msg) => {
+    if (!msg || !msg.type) return;
+
+    if (msg.type === 'public_state') {
+      const prevNight = publicState.currentNight;
+      publicState = msg.payload || publicState;
+      if (publicState.currentNight !== prevNight) submittedThisNight = false;
+      renderPlayerView();
+    }
+    else if (msg.type === 'assign_role') {
+      /* DM 统一按座位号（1 起）发，直接和自己的座位号比对 */
+      if (mySeatId != null && msg.payload && String(msg.payload.seatId) === String(mySeatId)) {
+        myRoleId = msg.payload.roleId;
+        renderPlayerView();
+      }
+    }
+    else if (msg.type === 'night_advanced') {
+      submittedThisNight = false;
+      renderPlayerView();
+    }
+    else if (msg.type === 'login_ok') {
+      if (msg.payload && msg.payload.playerId && String(msg.payload.playerId) !== String(myPlayerId)) return;
+      loggedIn = true;
+      loginTries = 0;
+      clearTimeout(loginTimer);
+      if (msg.payload && msg.payload.seatId) mySeatId = Number(msg.payload.seatId);
+      myRoleId = msg.payload.roleId || null;
+      submittedThisNight = !!msg.payload.submitted;
+      document.getElementById('joinBox').classList.add('hidden');
+      document.getElementById('playBox').classList.remove('hidden');
+      document.getElementById('mySeatLabel').textContent = mySeatId;
+      document.getElementById('myNameLabel').textContent = myUsername;
+      const roomLbl = document.getElementById('myRoomLabel');
+      if (roomLbl) roomLbl.textContent = getRoomCode();
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({
+          seatId: mySeatId, username: myUsername, password: myPassword
+        }));
+      } catch (e) {}
+      showLoginMsg('已入座：座位 ' + mySeatId, true);
+      renderPlayerView();
+    }
+    else if (msg.type === 'claim_failed') {
+      if (msg.payload && msg.payload.playerId && String(msg.payload.playerId) !== String(myPlayerId)) return;
+      showLoginMsg(msg.payload && msg.payload.reason || '入座失败', false);
+      setTimeout(() => { if (publicState) renderPlayerView(); }, 50);
+    }
+    else if (msg.type === 'login_failed') {
+      if (msg.payload && msg.payload.playerId && String(msg.payload.playerId) !== String(myPlayerId)) return;
+      showLoginMsg(msg.payload && msg.payload.reason || '登录失败', false);
+      loggedIn = false;
+      mySeatId = null;
+      myPlayerId = null;
+      /* 座位被别人占了之类的情况：回到大厅继续选 */
+      enterLobby();
+    }
+    else if (msg.type === '__connected__') {
+      /* 刚连上/重连成功：已入座就重新登录，否则待在大厅等状态 */
+      loginTries = 0;
+      if (mySeatId && myUsername && myPassword) sendLogin();
+      else if (myUsername && !document.getElementById('playBox').classList.contains('hidden')) renderPlayerView();
+    }
+    else if (msg.type === 'dm_history') {
+      const p = msg.payload || {};
+      if (mySeatId != null && Number(p.seatId) === Number(mySeatId)) {
+        myMessages = (p.messages || []).map(m => ({
+          text: m.text, night: m.night, time: m.time || ''
+        }));
+        renderDmMessages();
+      }
+    }
+    else if (msg.type === 'dm_message') {
+      const p = msg.payload || {};
+      if (mySeatId != null && Number(p.seatId) === Number(mySeatId)) {
+        myMessages.push({ text: p.text, night: p.night, time: p.time || new Date().toLocaleTimeString() });
+        renderDmMessages();
+      }
+    }
+    else if (msg.type === 'action_result') {
+      if (msg.payload && String(msg.payload.seatId) === String(mySeatId - 1)) {
+        const ok = msg.payload.status === 'approved';
+        if (!ok) { submittedThisNight = false; renderPlayerView(); }
+        showActionMsg(ok ? '✅ DM 已确认你的行动' : '❌ DM 驳回了你的行动，可以重新提交',
+                      ok);
+      }
+    }
+    else if (msg.type === 'action_rejected') {
+      showActionMsg(msg.payload && msg.payload.reason || '行动被拒绝', false);
+      submittedThisNight = !(msg.payload && msg.payload.keepSubmitted);
+      renderPlayerView();
+    }
+  });
+
+  document.getElementById('btnLogin').addEventListener('click', () => {
+    const username = document.getElementById('usernameInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+    if (!username) return showLoginMsg('请输入用户名', false);
+    if (!password) return showLoginMsg('请输入密码', false);
+
+    /* 房间号变了 → 先记住账号密码，换房间重新加载后再进 */
+    const roomVal = String(document.getElementById('roomInput').value || '')
+      .trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+    if (roomVal && roomVal !== getRoomCode()) {
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ seatId: 0, username, password }));
+      } catch (e) {}
+      showLoginMsg('正在切换到房间 ' + roomVal + ' …', true);
+      switchRoom(roomVal);
+      return;
+    }
+
+    myUsername = username;
+    myPassword = password;
+    mySeatId = null;
+    myPlayerId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    submittedThisNight = false;
+    loggedIn = false;
+    loginTries = 0;
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ seatId: 0, username: username, password: password }));
+    } catch (e) {}
+    enterLobby();
+  });
+
+  /* 进入房间大厅：不占座位，先看圆桌 */
+  function enterLobby() {
+    document.getElementById('joinBox').classList.add('hidden');
+    document.getElementById('playBox').classList.remove('hidden');
+    document.getElementById('mySeatLabel').textContent = '—';
+    document.getElementById('myNameLabel').textContent = myUsername || '—';
+    const roomLbl = document.getElementById('myRoomLabel');
+    if (roomLbl) roomLbl.textContent = getRoomCode();
+    showLoginMsg('已进入房间，点一个 ＋ 坐下', true);
+    try { ch.send('request_state', {}); } catch (e) {}
+    renderPlayerView();
+  }
+
+  /* 点空位入座 */
+  function claimSeat(seatNo) {
+    if (!myUsername || !myPassword) {
+      showLoginMsg('请先在登录框填写用户名和密码', false);
+      return;
+    }
+    if (mySeatId && Number(mySeatId) === Number(seatNo)) return;
+    if (mySeatId && Number(mySeatId) !== Number(seatNo)) {
+      if (!confirm('你现在坐在 ' + mySeatId + ' 号。\n要换到 ' + seatNo + ' 号吗？\n\n（角色绑定在座位上，换座后不会跟着你走）')) return;
+    }
+    if (!myPlayerId) myPlayerId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    ch.send('claim_seat', {
+      seatId: seatNo - 1, username: myUsername, password: myPassword, playerId: myPlayerId
+    });
+    showLoginMsg('正在入座…', true);
+  }
+
+  /* 发登录请求；DM 没回应就自动重试几次（对方可能还没打开页面） */
+  function sendLogin() {
+    if (!mySeatId || !myUsername || !myPassword) return;
+    if (!myPlayerId) myPlayerId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    ch.send('player_login', {
+      seatId: mySeatId, username: myUsername, password: myPassword, playerId: myPlayerId
+    });
+    clearTimeout(loginTimer);
+    if (loggedIn) return;
+    if (loginTries >= 6) {
+      showLoginMsg('等不到 DM 端回应……请确认 DM 端页面已打开、且房间号一致', false);
+      return;
+    }
+    loginTries += 1;
+    loginTimer = setTimeout(() => { if (!loggedIn) sendLogin(); }, 3500);
+  }
+
+  document.getElementById('btnLeave').addEventListener('click', () => {
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    clearTimeout(loginTimer);
+    loggedIn = false; loginTries = 0;
+    mySeatId = null; myPlayerId = null; myUsername = ''; myPassword = ''; myRoleId = null;
+    myMessages = [];
+    submittedThisNight = false;
+    document.getElementById('joinBox').classList.remove('hidden');
+    document.getElementById('playBox').classList.add('hidden');
+    showLoginMsg('已退出（下次需要自己登录）', true);
+  });
+
+  /* 点房间标签换房间 */
+  const myRoomPill = document.getElementById('myRoomPill');
+  if (myRoomPill) myRoomPill.addEventListener('click', () => {
+    const cur = getRoomCode();
+    const v = prompt('当前房间：' + cur + '\n\n输入新的房间号（字母/数字）：', cur);
+    if (v === null) return;
+    const r = String(v).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+    if (!r || r === cur) return;
+    switchRoom(r);
+  });
+
+  function showLoginMsg(text, ok) {
+    const el = document.getElementById('loginMsg');
+    el.textContent = text;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+  }
+  function showActionMsg(text, ok) {
+    const el = document.getElementById('actionMsg');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+  }
+
+  /* ===== 圆桌 ===== */
+  /* 根据圆桌实际尺寸算出每个座位卡能有多宽（保证不叠在一起） */
+  function computeSeatWidth(stage, n) {
+    const W = stage.clientWidth, H = stage.clientHeight;
+    const S = Math.min(W || 0, H || 0);
+    if (!S || !n) return 94;
+    const R = S * 0.44;                       // 卡片中心的环半径
+    const gap = 0.90;                         // 留 10% 间隙
+    const ideal = (2 * Math.PI * R) / n * gap;
+    return Math.round(Math.max(40, Math.min(100, ideal)));
+  }
+
+  function layoutPlayerSeats() {
+    const stage = document.getElementById('stage');
+    if (!stage) return;
+    const cards = stage.querySelectorAll('.pseat');
+    const n = cards.length;
+    if (!n) return;
+    const W = stage.clientWidth, H = stage.clientHeight;
+    if (!W || !H) return;
+    const cardW = cards[0].offsetWidth || 78;
+    const cardH = cards[0].offsetHeight || 40;
+    const radius = Math.max(10, Math.min(W, H) / 2 - Math.max(cardW, cardH) / 2 - 2);
+    cards.forEach((el, i) => {
+      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+      el.style.left = (W / 2 + radius * Math.cos(angle)) + 'px';
+      el.style.top = (H / 2 + radius * Math.sin(angle)) + 'px';
+    });
+  }
+
+  function renderTable() {
+    const stage = document.getElementById('stage');
+    if (!stage) return;
+    const ps = publicState.players || [];
+    stage.innerHTML = '';
+
+    const center = document.createElement('div');
+    center.className = 'center-night';
+    const isDay = publicState.phase === 'day';
+    center.innerHTML = `
+      <div class="cn-label"><img class="phase-ico" src="assets/${isDay ? 'sun' : 'moon'}.svg" alt=""> ${isDay ? '白 天' : '夜 晚'}</div>
+      <div class="cn-num">${publicState.currentNight}</div>
+      <div class="cn-sub">${isDay ? '白天讨论与投票' : '夜晚行动中'}</div>`;
+    stage.appendChild(center);
+
+    const seatW = computeSeatWidth(stage, ps.length);
+    stage.style.setProperty('--seat-w', seatW + 'px');
+    const takenList = publicState.taken || [];
+    ps.forEach((p, i) => {
+      const el = document.createElement('div');
+      const mine = mySeatId != null && String(p.id) === String(mySeatId - 1);
+      const occupied = takenList.indexOf(i + 1) >= 0;
+      const free = !occupied && !mine;
+      el.className = 'pseat' + (p.alive ? '' : ' dead') + (mine ? ' me' : '') + (free ? ' free' : '');
+      el.style.setProperty('--seat-w', seatW + 'px');
+      el.dataset.seat = String(i + 1);
+
+      if (free) {
+        el.title = `${i + 1} 号 · 空位，点击坐下`;
+        el.innerHTML = `<div class="pseat-avatar free-avatar"><span class="plus">＋</span></div>
+          <div class="ps-no">${i + 1}</div>
+          <div class="ps-name free-name">空位</div>`;
+        stage.appendChild(el);
+        return;
+      }
+
+      el.title = `${i + 1} 号 · ${p.name}${p.alive ? '' : '（已死亡）'}`;
+      const avatar = (mine && myRoleId)
+        ? roleIcon(myRoleId, 'avatar')
+        : '<img class="avatar-img" src="assets/seat-empty.svg" alt="">';
+      el.innerHTML = `<div class="pseat-avatar">${avatar}</div>
+        <div class="ps-no">${i + 1}</div>
+        <div class="ps-name">${escapeHtml(p.name)}</div>`;
+      stage.appendChild(el);
+    });
+
+    requestAnimationFrame(layoutPlayerSeats);
+  }
+
+  function renderDmMessages() {
+    const box = document.getElementById('dmMessagesBox');
+    const list = document.getElementById('dmMessagesList');
+    if (!myMessages.length) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    list.innerHTML = myMessages.map(m =>
+      `<div class="dm-message-item"><span class="dm-message-night">第 ${m.night} 夜 · ${m.time}</span>${escapeHtml(m.text)}</div>`
+    ).join('');
+  }
+
+  function renderPlayerView() {
+    renderTable();
+    const role = myRoleId ? ROLES[myRoleId] : null;
+
+    if (!mySeatId) {
+      document.getElementById('mySeatLabel').textContent = '—';
+      document.getElementById('myRoleName').textContent = '还没入座';
+      document.getElementById('myRoleAbility').textContent = '在下面的圆桌上点一个空位（＋）坐下';
+      document.getElementById('nightInfo').textContent =
+        `当前：第 ${publicState.currentNight} 夜 / ${publicState.phase === 'day' ? '白天' : '夜晚'}`;
+      document.getElementById('actionBox').innerHTML =
+        '<div class="tip">还没有座位。点圆桌上的 ＋ 就能坐下，坐下后才会收到自己的角色。</div>';
+      return;
+    }
+
+    document.getElementById('myRoleName').innerHTML = role ? roleIcon(myRoleId, 'big') + escapeHtml(role.name) : '—';
+    document.getElementById('myRoleAbility').textContent = role ? role.ability : '';
+    document.getElementById('nightInfo').textContent =
+      `当前：第 ${publicState.currentNight} 夜 / ${publicState.phase === 'day' ? '白天' : '夜晚'}`;
+
+    const box = document.getElementById('actionBox');
+    box.innerHTML = '';
+
+    if (!role) {
+      box.innerHTML = '<div class="tip">等待 DM 分配角色…</div>';
+      return;
+    }
+
+    const action = getNightAction(myRoleId, publicState.currentNight);
+    if (!action) {
+      box.innerHTML = '<div class="tip">本夜你的角色没有可执行的操作。</div>';
+      return;
+    }
+
+    if (action.interaction === 'passive') {
+      box.innerHTML = '<div class="tip">本夜你的角色信息由 DM 判定后私信告知，请等待 DM 消息。</div>';
+      return;
+    }
+
+    if (action.interaction === 'none') {
+      box.innerHTML = '<div class="tip">本夜你的角色没有可执行的操作。</div>';
+      return;
+    }
+
+    if (submittedThisNight) {
+      box.innerHTML = '<div class="tip ok">本夜你已提交过行动，等待 DM 确认。</div>';
+      return;
+    }
+
+    const players = publicState.players || [];
+    const count = action.targetCount || 1;
+    /* 僧侣不能保护自己 */
+    const targetPool = (myRoleId === 'monk')
+      ? players.filter(p => String(p.id) !== String(mySeatId - 1))
+      : players;
+
+    let selectsHtml = '';
+    for (let i = 0; i < count; i++) {
+      const options = targetPool.map(p =>
+        `<option value="${p.id}">${escapeHtml(p.name)}${p.alive ? '' : '（已死亡）'}</option>`
+      ).join('');
+      selectsHtml += `
+        <div class="target-field">
+          <label>目标 ${i + 1}</label>
+          <select class="targetSel" data-idx="${i}">${options || '<option value="">（暂无玩家）</option>'}</select>
+        </div>`;
+    }
+
+    box.innerHTML = `
+      ${selectsHtml}
+      <button id="btnSubmit" class="primary">提交行动</button>
+      <div id="actionMsg" class="msg"></div>
+      <div class="tip">${myRoleId === 'monk' ? '僧侣不能选择自己。' : ''}行动提交后会出现在 DM 端的「玩家行动待确认」列表里，DM 确认后才会生效。</div>
+    `;
+
+    document.getElementById('btnSubmit').addEventListener('click', () => {
+      const sels = box.querySelectorAll('.targetSel');
+      const targets = [];
+      for (const sel of sels) {
+        const v = sel.value;
+        if (v === '') return;
+        targets.push(Number(v));
+      }
+      if (count >= 2 && targets[0] === targets[1]) {
+        showActionMsg('两个目标不能相同', false);
+        return;
+      }
+      const ts = Date.now();
+      if (ts - lastActionTs < 1200) return;
+      lastActionTs = ts;
+      ch.send('player_action', {
+        seatId: mySeatId - 1,
+        playerId: myPlayerId,
+        username: myUsername,
+        roleId: myRoleId,
+        actionType: action.type,
+        targetSeats: targets,
+        ts: ts
+      });
+      submittedThisNight = true;
+      renderPlayerView();
+      showActionMsg('已提交，等待 DM 确认…', true);
+    });
+  }
+
+  /* 房间号回填 + 记住的账号自动登录 */
+  const roomInput = document.getElementById('roomInput');
+  if (roomInput) roomInput.value = getRoomCode();
+  const myRoomLabelEl = document.getElementById('myRoomLabel');
+  if (myRoomLabelEl) myRoomLabelEl.textContent = getRoomCode();
+
+  let saved = null;
+  try { saved = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY); } catch (e) {}
+  if (saved) {
+    try {
+      const s = JSON.parse(saved);
+      if (s && s.username && s.password) {
+        document.getElementById('usernameInput').value = s.username;
+        document.getElementById('passwordInput').value = s.password;
+        myUsername = s.username;
+        myPassword = s.password;
+        myPlayerId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        if (s.seatId) {
+          /* 上次已经入座 → 直接回到那个座位 */
+          mySeatId = s.seatId;
+          sendLogin();
+        } else {
+          /* 只记了账号 → 进大厅，自己点位置 */
+          enterLobby();
+        }
+      }
+    } catch (e) {}
+  }
+
+  /* 点圆桌上的空位入座 */
+  const stageEl = document.getElementById('stage');
+  if (stageEl) stageEl.addEventListener('click', (e) => {
+    const el = e.target.closest ? e.target.closest('.pseat.free') : null;
+    if (!el) return;
+    const seatNo = Number(el.dataset.seat);
+    if (!seatNo) return;
+    claimSeat(seatNo);
+  });
+
+  document.getElementById('usernameInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('passwordInput').focus(); });
+  document.getElementById('passwordInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btnLogin').click(); });
+
+  /* 圆桌随窗口尺寸重排（尺寸变化明显时重新渲染，让卡片跟着缩放） */
+  let _resizeTimer = null;
+  function handleTableResize() {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+      const stage = document.getElementById('stage');
+      if (!stage) return;
+      const n = stage.querySelectorAll('.pseat').length;
+      if (!n) return;
+      const w = computeSeatWidth(stage, n);
+      const cur = parseInt(stage.style.getPropertyValue('--seat-w'), 10) || 0;
+      if (Math.abs(w - cur) >= 3) renderTable();
+      else layoutPlayerSeats();
+    }, 120);
+  }
+  window.addEventListener('resize', handleTableResize);
+  window.addEventListener('orientationchange', handleTableResize);
+  if (window.ResizeObserver) {
+    const st = document.getElementById('stage');
+    if (st) new ResizeObserver(handleTableResize).observe(st);
+  }
+})();
+</script>
+</body>
+</html>

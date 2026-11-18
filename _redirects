@@ -1,0 +1,6 @@
+# Netlify 代理规则：把 /sb/* 转发到 Supabase
+# 作用：玩家只访问 netlify.app（手机能通），由 Netlify 的服务器去请求 Supabase，
+#       绕开「手机网络屏蔽 *.supabase.co」的问题，不需要 VPN。
+# 注意：只代理 REST（轮询通道）；WebSocket 无法被代理，电脑端仍直连，手机端自动走轮询。
+
+/sb/*  https://tlkziokoovtdioptbitu.supabase.co/:splat  200

@@ -1,0 +1,228 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>血染钟楼 · 房间入口</title>
+<style>
+  :root { --bg:#2a2436; --bone:#f4ede0; --gold:#e8c65c; --muted:#c0b5a3; --line:#574d70; --blood:#8b1220; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+         background:
+           radial-gradient(900px 480px at 50% -6%, rgba(139,18,32,.24), transparent 60%),
+           radial-gradient(700px 420px at 100% 110%, rgba(212,175,55,.08), transparent 60%),
+           var(--bg);
+         background-attachment:fixed;
+         color:var(--bone); display:flex; align-items:center; justify-content:center; padding:24px; }
+  .wrap { width:100%; max-width:520px; }
+  h1 { font-family:"Songti SC","STSong",Georgia,serif; font-size:24px; letter-spacing:8px; text-align:center;
+       margin:0 0 8px; color:var(--gold); font-weight:700; text-shadow:0 0 26px rgba(212,175,55,.35); }
+  .sub { text-align:center; font-size:11px; color:var(--muted); letter-spacing:3px; margin-bottom:24px; }
+  .panel { position:relative; background:linear-gradient(180deg, rgba(66,57,82,.96), rgba(13,15,21,.94));
+           border:1px solid #4f4667; border-radius:16px; padding:20px;
+           box-shadow:0 20px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04); backdrop-filter:blur(6px); }
+  .panel::before { content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+                   background:linear-gradient(90deg,transparent,rgba(212,175,55,.7),transparent); }
+  label { display:block; font-size:11px; color:var(--muted); letter-spacing:1px; margin-bottom:6px; }
+  .row { display:flex; gap:8px; margin-bottom:18px; }
+  input { flex:1; min-width:0; background:#302a3d; border:1px solid var(--line); color:var(--bone);
+          border-radius:9px; padding:10px 12px; font-size:14px; font-family:inherit; letter-spacing:2px; }
+  input:focus { outline:none; border-color:rgba(212,175,55,.7); box-shadow:0 0 0 2px rgba(212,175,55,.12); }
+  button { font-family:inherit; cursor:pointer; border-radius:9px; font-size:13px; padding:10px 14px;
+           transition:.15s; border:1px solid var(--line); background:#302a3d; color:var(--bone); }
+  button:hover { border-color:rgba(212,175,55,.7); color:var(--gold); }
+  .links { display:grid; gap:10px; }
+  a.entry { display:flex; align-items:center; justify-content:space-between; gap:10px; text-decoration:none;
+            background:linear-gradient(90deg,rgba(212,175,55,.12),rgba(139,18,32,.06));
+            border:1px solid rgba(212,175,55,.30); border-radius:11px; padding:14px 15px; color:var(--bone);
+            transition:.18s; }
+  a.entry:hover { border-color:rgba(212,175,55,.75); background:linear-gradient(90deg,rgba(212,175,55,.20),rgba(139,18,32,.10));
+                  transform:translateY(-1px); box-shadow:0 10px 24px rgba(0,0,0,.4); }
+  a.entry b { font-size:14px; letter-spacing:1px; font-family:"Songti SC",Georgia,serif; }
+  a.entry span { font-size:11px; color:var(--muted); }
+  .copy { font-size:11px; padding:5px 9px; }
+  .note { margin-top:16px; font-size:11px; line-height:1.7; color:#9b9282; border-top:1px dashed var(--line); padding-top:12px; }
+  .warn { color:#e0a94a; }
+  .ok { color:#5fbf87; }
+
+  /* ---------- 装饰 ---------- */
+  body::after {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:3; opacity:.55;
+    background-image:
+      radial-gradient(1.4px 1.4px at 15% 20%, rgba(212,175,55,.9), transparent 60%),
+      radial-gradient(1.2px 1.2px at 80% 34%, rgba(212,175,55,.7), transparent 60%),
+      radial-gradient(1.7px 1.7px at 42% 74%, rgba(224,120,90,.6), transparent 60%),
+      radial-gradient(1.1px 1.1px at 86% 82%, rgba(212,175,55,.65), transparent 60%);
+    background-size: 460px 460px, 580px 580px, 700px 700px, 620px 620px;
+    animation: emberdrift 46s linear infinite;
+  }
+  @keyframes emberdrift {
+    from { background-position: 0 0, 0 0, 0 0, 0 0; }
+    to   { background-position: 50px -460px, -70px -580px, 30px -700px, -50px -620px; }
+  }
+  .panel::after {
+    content:''; position:absolute; inset:5px; pointer-events:none; border-radius:12px; opacity:.35;
+    background:
+      linear-gradient(var(--gold),var(--gold)) left top/18px 1px no-repeat,
+      linear-gradient(var(--gold),var(--gold)) left top/1px 18px no-repeat,
+      linear-gradient(var(--gold),var(--gold)) right top/18px 1px no-repeat,
+      linear-gradient(var(--gold),var(--gold)) right top/1px 18px no-repeat,
+      linear-gradient(var(--gold),var(--gold)) left bottom/18px 1px no-repeat,
+      linear-gradient(var(--gold),var(--gold)) left bottom/1px 18px no-repeat,
+      linear-gradient(var(--gold),var(--gold)) right bottom/18px 1px no-repeat,
+      linear-gradient(var(--gold),var(--gold)) right bottom/1px 18px no-repeat;
+  }
+  h1::before { content:'✦  '; color:rgba(212,175,55,.55); font-size:13px; vertical-align:3px; }
+  h1::after  { content:'  ✦'; color:rgba(212,175,55,.55); font-size:13px; vertical-align:3px; }
+  a.entry { position:relative; overflow:hidden; }
+  a.entry::after {
+    content:''; position:absolute; top:-20%; left:-60%; width:45%; height:140%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.22), transparent);
+    transform: skewX(-18deg); transition: left .55s ease;
+  }
+  a.entry:hover::after { left:125%; }
+
+/* ============================================================
+   血月玻璃主题
+   ============================================================ */
+:root { --bg:#f5efe4; --bone:#241d2b; --gold:#b8860b; --muted:#6b6270; --line:rgba(94,78,58,.22); --blood:#8e2f2b; }
+body {
+  color: var(--bone);
+  background:
+    linear-gradient(rgba(255,251,244,.50), rgba(255,251,244,.70)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+body::after { opacity:.12; }
+h1 { color:#96700f; text-shadow:none; }
+h1::before, h1::after { color: rgba(150,112,15,.55); }
+.sub { color:#7a705f; }
+.panel {
+  background: rgba(255,255,255,.74);
+  border-color: rgba(94,78,58,.22);
+  box-shadow: 0 20px 46px rgba(70,50,25,.18), inset 0 1px 0 rgba(255,255,255,.7);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.panel::before { opacity:.45; background: linear-gradient(90deg,transparent,rgba(184,134,11,.7),transparent); }
+.panel::after { opacity:.45; }
+label { color:#7a705f; }
+input { background: rgba(255,255,255,.94); color:#241d2b; border-color: rgba(94,78,58,.25); }
+input:focus { border-color: rgba(184,134,11,.7); box-shadow:0 0 0 2px rgba(184,134,11,.14); }
+button { background: rgba(255,255,255,.9); color:#241d2b; border-color: rgba(94,78,58,.25); }
+button:hover { border-color: rgba(184,134,11,.75); color:#96700f; }
+a.entry {
+  background: rgba(255,255,255,.70);
+  border-color: rgba(184,134,11,.32);
+  color:#241d2b;
+}
+a.entry:hover { background: rgba(255,255,255,.9); border-color: rgba(184,134,11,.75); }
+a.entry span { color:#7a705f; }
+a.entry::after { background: linear-gradient(100deg, transparent, rgba(255,255,255,.75), transparent); }
+.note { color:#7a705f; border-top-color: rgba(94,78,58,.2); }
+.warn { color:#a87c14; }
+.ok { color:#2e7d5b; }
+
+/* 暗调背景 */
+body {
+  color:#efe7d8;
+  background:
+    linear-gradient(rgba(10,8,14,.18), rgba(10,8,14,.44)),
+    url("assets/bg.jpg") center / cover no-repeat fixed;
+}
+.panel { color:#241d2b; background: rgba(255,255,255,.82); }
+.sub { color:#7a705f; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>血 染 钟 楼</h1>
+  <div class="sub">BLOOD ON THE CLOCKTOWER · 房间入口</div>
+
+  <div class="panel">
+    <label>房间号（同一个房间的人才能互相看见）</label>
+    <div class="row">
+      <input id="room" maxlength="16" spellcheck="false">
+      <button id="btnRand">随机</button>
+    </div>
+
+    <div class="links">
+      <a class="entry" id="dmLink" href="dm.html"><div><b>🎩 进入主持人端</b><br><span>只有主持人在这个页面操作</span></div><div class="copy" data-c="dm">复制链接</div></a>
+      <a class="entry" id="playerLink" href="player.html"><div><b>🎭 进入玩家端</b><br><span>把这条链接发到群里，玩家各自打开</span></div><div class="copy" data-c="player">复制链接</div></a>
+      <a class="entry" id="spectatorLink" href="spectator.html"><div><b>👁 旁观者（只读）</b><br><span>需要说书人开启旁观并给出密码</span></div><div class="copy" data-c="spec">复制链接</div></a>
+    </div>
+
+    <div class="note" id="status"></div>
+    <button id="btnTest" style="width:100%;margin-top:12px;">🔌 测试 Realtime 连接</button>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script src="shared.js"></script>
+<script>
+(function () {
+  const roomEl = document.getElementById('room');
+  const dmLink = document.getElementById('dmLink');
+  const playerLink = document.getElementById('playerLink');
+  const spectatorLink = document.getElementById('spectatorLink');
+  const statusEl = document.getElementById('status');
+
+  function randRoom() {
+    const s = Math.random().toString(36).slice(2, 6);
+    return s.length === 4 ? s : (s + 'abcd').slice(0, 4);
+  }
+
+  const fromUrl = getRoomCode();
+  roomEl.value = fromUrl && fromUrl !== 'lobby' ? fromUrl : randRoom();
+
+  function base() { return location.href.split(/[?#]/)[0].replace(/[^/]*$/, ''); }
+  function linkFor(page) { return page + '?room=' + encodeURIComponent(roomEl.value.trim().toLowerCase() || 'lobby'); }
+
+  function refresh() {
+    dmLink.href = linkFor('dm.html');
+    playerLink.href = linkFor('player.html');
+    if (spectatorLink) spectatorLink.href = linkFor('spectator.html');
+  }
+
+  roomEl.addEventListener('input', refresh);
+  document.getElementById('btnRand').addEventListener('click', () => { roomEl.value = randRoom(); refresh(); });
+  refresh();
+
+  document.querySelectorAll('.copy').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const pick = el.dataset.c === 'dm' ? dmLink : (el.dataset.c === 'spec' ? spectatorLink : playerLink);
+      const url = location.origin + new URL(pick.href).pathname + new URL(pick.href).search;
+      const done = () => { el.textContent = '已复制'; setTimeout(() => el.textContent = '复制链接', 1500); };
+      if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, done);
+      else { prompt('手动复制：', url); }
+    });
+  });
+
+  if (!isSupabaseReady()) {
+    statusEl.innerHTML = '<span class="warn">⚠ 还没配置 Supabase</span>：现在只能在同一台电脑的多个标签页里玩。' +
+      '把项目 URL 和 publishable key 填进 <b>supabase-config.js</b>，手机和别的电脑才连得上。';
+    document.getElementById('btnTest').style.display = 'none';
+  } else {
+    const host = String(SUPABASE_CONFIG.url).replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    statusEl.innerHTML = '<span class="ok">配置已填好</span> · ' + host +
+      '<br>点下面的按钮实际连一次，右下角出现「已连接」就说明网络也通了。';
+  }
+
+  document.getElementById('btnTest').addEventListener('click', () => {
+    const t0 = Date.now();
+    const probe = openChannel(() => {});
+    statusEl.textContent = '正在连接……（WebSocket 被挡的话会自动切 HTTPS 轮询，最多等 20 秒）';
+    const iv = setInterval(() => {
+      if (probe.joined) {
+        clearInterval(iv);
+        statusEl.innerHTML = '<span class="ok">✓ 连接成功</span> · 用了 ' + (Date.now() - t0) + ' ms';
+      } else if (Date.now() - t0 > 20000) {
+        clearInterval(iv);
+        statusEl.innerHTML = '<span class="warn">✗ 20 秒内没连上</span> · 按 F12 看 Console 里的 ' +
+          '<code>[rt]</code> / <code>[poll]</code> 日志，把红字截图发人家';
+      }
+    }, 200);
+  });
+})();
+</script>
+</body>
+</html>
