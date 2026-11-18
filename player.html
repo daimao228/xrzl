@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -378,6 +378,15 @@ body::after { opacity:.10; }
 .lobby-msg.hidden { display:none; }
 .tip.wait { color:#a87c14; border-color: rgba(168,124,20,.4); background: rgba(255,248,230,.9); }
 
+/* ---------- 伪装身份 ---------- */
+.bluff-box { margin:10px 2px 12px; padding:10px 12px; border-radius:12px;
+  background: rgba(255,255,255,.95); border:1px solid rgba(125,75,176,.45); }
+.bluff-box.hidden { display:none; }
+.bb-title { font-size:12px; font-weight:700; color:#7d4bb0; letter-spacing:1px; margin-bottom:7px; }
+.bb-list { display:flex; flex-wrap:wrap; gap:6px; }
+.bb-item { font-size:12px; padding:4px 10px; border-radius:20px; color:#5b3a86;
+  background:#f3ecfa; border:1px solid rgba(125,75,176,.35); }
+
 /* ---------- 复盘：全部角色 ---------- */
 .reveal-box { margin:10px 2px 14px; padding:12px 12px 10px; border-radius:12px;
   background: rgba(255,255,255,.97); border:1px solid rgba(184,134,11,.5);
@@ -447,6 +456,10 @@ html[data-phase="night"] body {
       <div class="role-name" id="myRoleName">—</div>
       <div class="role-ability" id="myRoleAbility"></div>
     </div>
+    <div id="bluffBox" class="bluff-box hidden">
+      <div class="bb-title">🎭 你的伪装身份（不在场的镇民）</div>
+      <div class="bb-list" id="bluffList"></div>
+    </div>
     <div id="revealBox" class="reveal-box hidden">
       <div class="rv-head">🎭 复盘 · 全部角色</div>
       <div class="rv-list" id="revealList"></div>
@@ -472,6 +485,7 @@ html[data-phase="night"] body {
   let publicState = { currentNight: 1, phase: 'night', players: [] };
   let myMessages = [];
   let gameReveal = null;   // 复盘数据（DM 公布的所有角色）
+  let myBluffs = [];       // 小恶魔的三个伪装
   let submittedThisNight = false;
   let lastActionTs = 0;
   let loggedIn = false;
@@ -548,6 +562,13 @@ html[data-phase="night"] body {
       loginTries = 0;
       if (myUsername && myPassword) sendLogin();
       else if (myUsername && !document.getElementById('playBox').classList.contains('hidden')) renderPlayerView();
+    }
+    else if (msg.type === 'bluffs') {
+      const p = msg.payload || {};
+      if (mySeatId != null && Number(p.seatId) === Number(mySeatId)) {
+        myBluffs = Array.isArray(p.roles) ? p.roles.slice(0, 3) : [];
+        renderBluffs();
+      }
     }
     else if (msg.type === 'reveal') {
       gameReveal = msg.payload || null;
@@ -792,6 +813,17 @@ html[data-phase="night"] body {
 
   const TEAM_COLOR = { townsfolk:'#2f6f9e', outsider:'#7d4bb0', minion:'#b0562a', demon:'#b03a3a' };
 
+  /* 小恶魔的伪装身份 */
+  function renderBluffs() {
+    const box = document.getElementById('bluffBox');
+    const list = document.getElementById('bluffList');
+    if (!box || !list) return;
+    if (!myBluffs.length) { box.classList.add('hidden'); list.innerHTML = ''; return; }
+    box.classList.remove('hidden');
+    list.innerHTML = myBluffs.map(n =>
+      `<span class="bb-item">${escapeHtml(n)}</span>`).join('');
+  }
+
   /* 复盘：把 DM 公布的完整角色表铺出来 */
   function renderReveal() {
     const box = document.getElementById('revealBox');
@@ -829,6 +861,7 @@ html[data-phase="night"] body {
 
   function renderPlayerView() {
     renderTable();
+    renderBluffs();
     /* 白天/夜晚切换整体色调 */
     try { document.documentElement.dataset.phase = publicState.phase === 'day' ? 'day' : 'night'; } catch (e) {}
     const role = myRoleId ? ROLES[myRoleId] : null;
@@ -1005,3 +1038,4 @@ html[data-phase="night"] body {
 </script>
 </body>
 </html>
+

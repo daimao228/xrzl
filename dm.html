@@ -699,7 +699,7 @@ html[data-phase="night"] body {
     <div class="bluff-section">
       <div class="bluff-head">
         <span class="bluff-title">🩸 恶魔伪装身份（3 个未使用的镇民）</span>
-        <span class="bluff-hint" id="bluffHint">供恶魔在受审时宣称，不会分配给玩家</span>
+        <button id="btnTellBluffs" class="mini-btn" title="把三个伪装私信发给场上的恶魔">📤 告知小恶魔</button>        <span class="bluff-hint" id="bluffHint">供恶魔在受审时宣称，不会分配给玩家</span>
       </div>
       <div id="bluffSlots" class="bluff-slots"></div>
     </div>
@@ -1097,6 +1097,43 @@ function renderPoolStatus() {
   parts.push(`<span class="${totalCls}">总数 <b>${state.pool.length}</b>/${state.players.length}</span>`);
   el.innerHTML = parts.join(' &nbsp;·&nbsp; ') + `<br><span class="${v.ok ? 'good' : 'warn'}">${v.msg}</span>`;
 }
+/* ---------- 小恶魔的三个伪装（不在场的镇民） ---------- */
+function demonPlayer() {
+  return state.players.find(p => p.alive && p.role && ROLES[p.role].team === 'demon') || null;
+}
+function ensureBluffs() {
+  const cands = unusedTownsfolk().map(c => c.id);
+  for (let i = 0; i < 3; i++) {
+    if (state.bluff[i] && ROLES[state.bluff[i]]) continue;
+    const id = cands.shift();
+    if (!id) break;
+    state.bluff[i] = id;
+  }
+  return state.bluff.filter(id => id && ROLES[id]);
+}
+function bluffNames() {
+  return ensureBluffs().map(id => ROLES[id].name);
+}
+function sendBluffsToSeat(seatNo) {
+  if (!dmChannel) return false;
+  const names = bluffNames();
+  if (!names.length) return false;
+  dmChannel.send('bluffs', { seatId: Number(seatNo), roles: names });
+  return true;
+}
+/* 把伪装发给场上的恶魔 */
+function tellDemonBluffs(silent) {
+  const d = demonPlayer();
+  if (!d) return 0;
+  const seatNo = state.players.indexOf(d) + 1;
+  if (!sendBluffsToSeat(seatNo)) return 0;
+  if (!silent) {
+    addLog(`🎭 已告知 ${d.name} 三个伪装：${bluffNames().join('、')}`);
+    addNightLine(state.currentNight, `🎭 已告知 ${d.name} 三个伪装：${bluffNames().join('、')}`, 'dm');
+  }
+  return 1;
+}
+
 function renderBluff() {
   const wrap = document.getElementById('bluffSlots');
   wrap.innerHTML = '';
@@ -1791,6 +1828,8 @@ function dealFromPool() {
     p.redHerring = false;
   });
   ensureRedHerring();
+  ensureBluffs();
+  renderBluff();
   lastSnapshot = snapshotPlayers();
   addLog('🎲 已根据角色池随机分发到座位');
   render();
@@ -1871,6 +1910,8 @@ function broadcastRoleToSeat(seatId, silent) {
   const seatNo = state.players.indexOf(p) + 1;
   const shown = displayRoleOf(p);
   dmChannel.send('assign_role', { seatId: seatNo, roleId: shown, roleName: ROLES[shown].name });
+  /* 恶魔额外拿到三个伪装 */
+  if (ROLES[p.role] && ROLES[p.role].team === 'demon') sendBluffsToSeat(seatNo);
   state.rolesSent = true;   // 发过身份后锁定座位
   if (!silent) addLog(`📤 已向 ${p.name} 发送角色信息`);
   return true;
@@ -2522,6 +2563,16 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   const freeBtn = document.getElementById('btnTurnFree');
   if (freeBtn) freeBtn.addEventListener('click', () => setNightTurn(null));
+  /* 把三个伪装发给小恶魔 */
+  const tellBluffsBtn = document.getElementById('btnTellBluffs');
+  if (tellBluffsBtn) tellBluffsBtn.addEventListener('click', () => {
+    if (!dmChannel) { alert('还没连上服务器，等左下角显示「已连接」再试'); return; }
+    const n = tellDemonBluffs(false);
+    if (!n) { alert('场上还没有存活的小恶魔（或没有可用的伪装牌）'); return; }
+    renderBluff();
+    save();
+    showFeedback(feedback, '已把三个伪装发给小恶魔', true);
+  });
   /* 话术库：展开 / 保存 / 恢复默认 */
   const promptLibBtn = document.getElementById('btnPromptLib');
   if (promptLibBtn) promptLibBtn.addEventListener('click', () => {
@@ -2756,6 +2807,8 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
+
+
 
 
 
