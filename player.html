@@ -582,6 +582,15 @@ html[data-phase="night"] body {
       if (myUsername && myPassword) sendLogin();
       else if (myUsername && !document.getElementById('playBox').classList.contains('hidden')) renderPlayerView();
     }
+    else if (msg.type === 'seat_sync') {
+      const p = msg.payload || {};
+      if (myPlayerId && String(p.playerId) === String(myPlayerId) && p.seatId) {
+        mySeatId = Number(p.seatId);
+        const lbl = document.getElementById('mySeatLabel');
+        if (lbl) lbl.textContent = mySeatId;
+        renderPlayerView();
+      }
+    }
     else if (msg.type === 'bluffs') {
       const p = msg.payload || {};
       if (mySeatId != null && Number(p.seatId) === Number(mySeatId)) {
@@ -1109,6 +1118,7 @@ html[data-phase="night"] body {
 </script>
 </body>
 </html>
+
 
 
 

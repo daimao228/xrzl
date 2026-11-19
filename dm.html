@@ -1901,19 +1901,68 @@ function render() {
   save();
 }
 
+/* 改人数：先剔掉空座位，再把剩下的座位从 1 开始连续重排 */
 function syncPlayerCount(count) {
   const cur = state.players.length;
   if (count === cur) return;
-  if (count > cur) {
-    for (let i = cur; i < count; i++) {
-      state.players.push({ id: Date.now() + i, name: '玩家' + (i + 1), role: null, belief: null, alive: true, marks: [] });
-    }
-    addLog(`人数调整为 ${count} 人，新增 ${count - cur} 个座位`);
-  } else {
-    const removed = state.players.splice(count);
-    addLog(`人数调整为 ${count} 人，移除 ${removed.length} 个座位`);
-    state.accounts = state.accounts.filter(a => a.seatId <= count);
+  const accSeats = new Set((state.accounts || []).map(a => Number(a.seatId)));
+
+  const occupied = [];
+  const empties = [];
+  state.players.forEach((p, i) => {
+    const seat = i + 1;
+    (accSeats.has(seat) ? occupied : empties).push({ oldSeat: seat, player: p });
+  });
+
+  let keep = occupied.slice(0, count);          // 先保人，最多 count 个
+  const need = count - keep.length;
+  if (need > 0) {
+    keep = keep.concat(empties.slice(0, need)); // 不够再用空座位补
   }
+  while (keep.length < count) {                 // 还不够就新开座位
+    keep.push({ oldSeat: null, player: { id: 'n' + Date.now() + keep.length, name: '', role: null, belief: null, alive: true, marks: [] } });
+  }
+  keep = keep.slice(0, count);
+
+  /* 重新编号（角色跟着玩家走，座位号连续） */
+  const remap = new Map();
+  state.players = keep.map((it, idx) => {
+    const np = Object.assign({}, it.player);
+    np.id = idx;
+    if (!np.name) np.name = '玩家' + (idx + 1);
+    if (it.oldSeat) remap.set(Number(it.oldSeat), idx + 1);
+    return np;
+  });
+
+  /* 账号 / 私信里的座位号一起改 */
+  state.accounts = (state.accounts || []).map(a => {
+    const ns = remap.get(Number(a.seatId));
+    return ns ? Object.assign({}, a, { seatId: ns }) : null;
+  }).filter(Boolean);
+  state.dmMessages = (state.dmMessages || []).map(m => {
+    const ns = remap.get(Number(m.seatId));
+    return ns ? Object.assign({}, m, { seatId: ns }) : null;
+  }).filter(Boolean);
+
+  /* 座位变了，本夜的提交与待确认行动作废，避免错位 */
+  state.submitted = {};
+  pendingActions = [];
+  voteNomineeId = null;
+  voteNominatorId = null;
+  voteYesSet.clear();
+
+  seatOccupancy.clear();
+  state.accounts.forEach(a => seatOccupancy.set(a.seatId, { playerId: a.playerId, username: a.username }));
+
+  /* 通知在线玩家：你的座位号变了 */
+  if (dmChannel) {
+    state.accounts.forEach(a => {
+      if (a.playerId) dmChannel.send('seat_sync', { seatId: a.seatId, playerId: a.playerId });
+    });
+  }
+  addLog(`人数调整为 ${count} 人（已排除空座位并重新编号）`);
+  lastSnapshot = snapshotPlayers();
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.night === state.night));
   render();
   broadcastPublicState();
 }
@@ -3060,6 +3109,8 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
+
+
 
 
 
