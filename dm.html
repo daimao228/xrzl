@@ -673,6 +673,15 @@ html[data-phase="night"] body {
     <div class="dl-tip">忘记密码：清掉浏览器里本站的数据即可（localStorage 的 botc_dm_v13，会同时清空对局存档）。</div>
   </div>
 </div>
+<div id="dmConflict" class="dm-lock hidden">
+  <div class="dm-lock-card">
+    <div class="dl-title">⚠️ 房间已被占用</div>
+    <div class="dl-sub" id="dmConflictMsg">这个房间已经有另一个主持人页面在操作了。<br>同一房间只能有一个说书人端。</div>
+    <button id="btnDmRetry" class="primary">重新检测</button>
+    <button id="btnDmForce" style="margin-top:8px;">强制接管（前一个会掉线）</button>
+    <div class="dl-tip">如果是你自己在另一台设备上开着，点「强制接管」把控制权抢过来。</div>
+  </div>
+</div>
 <header>
   <h1>血染钟楼 · 说书人助手 <small>暗流涌动</small></h1>
   <div class="ctrl">
@@ -903,6 +912,64 @@ function hideDmLock() {
   document.body.classList.remove('dm-locked');
   const box = document.getElementById('dmLock');
   if (box) box.classList.add('hidden');
+}
+
+/* ---------- 同一房间只允许一个说书人端 ---------- */
+let dmOwner = 'dm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+let dmRole = 'unknown';        // unknown | owner | blocked
+let dmBlocked = false;
+let dmLeaseTimer = null;
+let dmLeaseSentAt = 0;
+const DM_LEASE_MS = 8000;      // 心跳间隔
+const DM_LEASE_FRESH = 26000;  // 超过这个时间算过期
+
+function sendDmLease(force) {
+  if (!dmChannel) return;
+  dmLeaseSentAt = Date.now();
+  dmChannel.send('dm_lease', { owner: dmOwner, ts: dmLeaseSentAt, force: !!force });
+}
+function startDmLease() {
+  if (dmLeaseTimer) clearInterval(dmLeaseTimer);
+  sendDmLease(false);
+  dmLeaseTimer = setInterval(() => {
+    if (dmRole === 'owner' || dmRole === 'unknown') sendDmLease(false);
+  }, DM_LEASE_MS);
+  /* 没有别人应答就当自己独占 */
+  setTimeout(() => {
+    if (dmRole === 'unknown') { dmRole = 'owner'; }
+  }, 2600);
+}
+function blockDm(why) {
+  dmRole = 'blocked';
+  dmBlocked = true;
+  document.body.classList.add('dm-locked');
+  const box = document.getElementById('dmConflict');
+  const msg = document.getElementById('dmConflictMsg');
+  if (msg && why) msg.textContent = why;
+  if (box) box.classList.remove('hidden');
+}
+function unblockDm() {
+  dmBlocked = false;
+  dmRole = 'owner';
+  document.body.classList.remove('dm-locked');
+  const box = document.getElementById('dmConflict');
+  if (box) box.classList.add('hidden');
+  broadcastPublicState();
+}
+function handleDmLease(payload) {
+  const p = payload || {};
+  if (!p.owner || p.owner === dmOwner) return;
+  const fresh = (Date.now() - Number(p.ts)) < DM_LEASE_FRESH;
+  if (!fresh) return;
+  if (p.force) { blockDm('另一个主持人页面强制接管了这个房间（可能是你在别的设备上打开的）。'); return; }
+  if (dmRole === 'owner') {
+    if (Number(p.ts) > dmLeaseSentAt + 300) { blockDm('这个房间已经有另一个主持人页面在操作了。'); }
+    else { sendDmLease(false); }   // 我更早，重申一下
+    return;
+  }
+  /* 还没确定身份：用 owner 字符串比大小，输的一方让位 */
+  if (dmOwner > p.owner) { sendDmLease(false); return; }
+  blockDm('这个房间已经有另一个主持人页面在操作了。');
 }
 
 function save() {
@@ -2048,7 +2115,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   dmChannel = openChannel((msg) => {
     if (!msg || !msg.type) return;
-    if (!dmUnlocked) return;   // 未解锁时说书人端不应答任何玩家请求
+    if (msg.type === 'dm_lease') { handleDmLease(msg.payload); return; }
+    if (!dmUnlocked) return;      // 未解锁时说书人端不应答任何玩家请求
+    if (dmBlocked) return;        // 房间被另一个说书人端占用时同样不处理
 
     if (msg.type === 'player_login') {
       const { seatId, username, password, playerId } = msg.payload || {};
@@ -2899,6 +2968,24 @@ document.addEventListener('DOMContentLoaded', function () {
   if (window.ResizeObserver) new ResizeObserver(() => layoutSeats()).observe(stage);
 
   load();
+  /* 同一房间只允许一个说书人端：开始发心跳 */
+  startDmLease();
+  const retryBtn = document.getElementById('btnDmRetry');
+  if (retryBtn) retryBtn.addEventListener('click', () => {
+    if (dmRole === 'owner' && !dmBlocked) { alert('当前就是这个页面在主持'); return; }
+    unblockDm();
+    sendDmLease(false);
+    setTimeout(() => {
+      if (!dmBlocked) showFeedback(feedback, '已重新获取主持权', true);
+    }, 900);
+  });
+  const forceBtn = document.getElementById('btnDmForce');
+  if (forceBtn) forceBtn.addEventListener('click', () => {
+    if (!confirm('强制接管这个房间的主持权？另一个说书人页面会被断开。')) return;
+    unblockDm();
+    sendDmLease(true);
+    setTimeout(() => { if (!dmBlocked) broadcastPublicState(); }, 300);
+  });
   /* 设了密码：没解锁就先挡在锁屏 */
   if (state.dmPassword) {
     let tok = null;
@@ -2918,6 +3005,8 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
+
+
 
 
 
