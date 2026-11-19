@@ -989,7 +989,9 @@ function load() {
       alive: p.alive !== false,
       marks: Array.isArray(p.marks) ? p.marks.filter(m => MARKS.includes(m)) : [],
       belief: (typeof p.belief === 'string' && ROLES[p.belief]) ? p.belief : null,
-      redHerring: !!p.redHerring
+      redHerring: !!p.redHerring,
+      virginUsed: !!p.virginUsed,
+      deadVoteUsed: !!p.deadVoteUsed
     }));
     state.pool = Array.isArray(s.pool) ? s.pool.filter(id => ROLES[id]) : [];
     /* 老存档里的酒鬼没有假身份，这里补一个 */
@@ -1680,23 +1682,55 @@ function renderVotePlayers() {
   const box = document.getElementById('votePlayers');
   box.innerHTML = '';
   state.players.forEach(p => {
+    const used = !p.alive && !!p.deadVoteUsed;
+    const canVote = p.alive || !p.deadVoteUsed;
     const b = document.createElement('button');
-    b.className = 'vote-chip' + (voteYesSet.has(p.id) ? ' yes' : '') + (p.alive ? '' : ' dead');
+    b.className = 'vote-chip' + (voteYesSet.has(p.id) ? ' yes' : '') +
+      (p.alive ? '' : ' dead') + (used ? ' used' : '');
     b.dataset.pid = p.id;
     b.textContent = p.name;
-    b.title = p.alive ? '点击切换赞成/反对' : '已死亡（不可投票）';
-    if (!p.alive) b.disabled = true;
+    b.title = p.alive ? '点击切换赞成/反对'
+      : (used ? '死亡投票已经用掉了' : '已死亡，还有 1 次死亡投票');
+    if (!canVote) b.disabled = true;
     box.appendChild(b);
   });
 }
+/* 贞洁者：首次被镇民提名时，提名者立即被处决（中毒/醉酒时失效） */
+function checkVirginTrigger() {
+  if (voteNomineeId == null || voteNominatorId == null) return false;
+  const nom = state.players.find(p => String(p.id) === String(voteNomineeId));
+  const nor = state.players.find(p => String(p.id) === String(voteNominatorId));
+  if (!nom || !nor) return false;
+  if (nom.role !== 'virgin' || !nom.alive || nom.virginUsed) return false;
+  if (nom.marks.includes('中毒') || nom.marks.includes('醉酒')) return false;
+  if (!nor.alive || !nor.role || !ROLES[nor.role] || ROLES[nor.role].team !== 'townsfolk') return false;
+
+  nom.virginUsed = true;
+  nor.alive = false;
+  const line = `贞洁者 ${nom.name} 被 ${nor.name}（镇民）提名 —— 提名者立即被处决`;
+  addNightLine(state.currentNight, line, 'vote');
+  addLog(`👑 ${line}`);
+  voteNomineeId = null;
+  voteNominatorId = null;
+  voteYesSet.clear();
+  const nsel = document.getElementById('voteNominee');
+  const rsel = document.getElementById('voteNominator');
+  if (nsel) nsel.value = '';
+  if (rsel) rsel.value = '';
+  render();
+  broadcastPublicState();
+  return true;
+}
+
 function currentVoteInfo() {
   const nominee = voteNomineeId == null ? NaN : Number(voteNomineeId);
   const nominator = voteNominatorId == null ? NaN : Number(voteNominatorId);
   const aliveCount = state.players.filter(p => p.alive).length;
   const need = Math.floor(aliveCount / 2) + 1;
+  /* 死亡玩家的一次性投票也算数 */
   const yes = [...voteYesSet].filter(id => {
     const p = state.players.find(x => x.id == id);
-    return p && p.alive;
+    return !!p;
   });
   const passed = yes.length >= need;
   return { nominee, nominator, need, yes, passed, aliveCount };
@@ -1884,9 +1918,18 @@ function syncPlayerCount(count) {
   broadcastPublicState();
 }
 function newGame(count) {
-  state.players = Array.from({ length: count }, (_, i) => ({
-    id: i, name: '玩家' + (i + 1), role: null, belief: null, alive: true, marks: []
-  }));
+  const wasRevealed = !!state.revealed;
+  const prevPlayers = state.players || [];
+  /* 保留原来的玩家名 + 账号，玩家不用重新登录/重新选座 */
+  state.players = Array.from({ length: count }, (_, i) => {
+    const old = prevPlayers[i];
+    return {
+      id: i,
+      name: (old && old.name) ? old.name : ('玩家' + (i + 1)),
+      role: null, belief: null, alive: true, marks: [],
+      redHerring: false, virginUsed: false, deadVoteUsed: false
+    };
+  });
   state.pool = [];
   state.bluff = [null, null, null];
   state.log = [];
@@ -1895,7 +1938,7 @@ function newGame(count) {
   state.phase = 'night';
   state.nightLogs = [];
   state.votes = [];
-  state.accounts = [];
+  state.accounts = (state.accounts || []).filter(a => a && a.seatId <= count);
   state.dmMessages = [];
   state.rolesSent = false;
   state.revealed = false;
@@ -1906,6 +1949,11 @@ function newGame(count) {
   pendingActions = [];
   state.submitted = {};
   seatOccupancy.clear();
+  state.accounts.forEach(a => {
+    seatOccupancy.set(a.seatId, { playerId: a.playerId, username: a.username });
+  });
+  /* 新游戏：顺带把玩家端的复盘面板收起来 */
+  if (wasRevealed && dmChannel) dmChannel.send('reveal_off', {});
   lastSnapshot = snapshotPlayers();
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.night === 'first'));
   render();
@@ -2898,6 +2946,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('voteNominator').value = '';
     }
     renderVoteResult();
+    checkVirginTrigger();
   });
   document.getElementById('voteNominator').addEventListener('change', e => {
     const v = e.target.value;
@@ -2907,6 +2956,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('voteNominee').value = '';
     }
     renderVoteResult();
+    checkVirginTrigger();
   });
   document.getElementById('votePlayers').addEventListener('click', e => {
     const chip = e.target.closest('.vote-chip');
@@ -2929,6 +2979,11 @@ document.addEventListener('DOMContentLoaded', function () {
     if (String(voteNomineeId) === String(voteNominatorId)) { showFeedback(feedback, '被提名者与提名者不能是同一人', false); return; }
     const info = currentVoteInfo();
     if (!info.yes.length) { if (!confirm('当前没有任何赞成票，仍要记录吗？')) return; }
+    /* 参与投票的死亡玩家：用掉这一次死亡投票 */
+    info.yes.forEach(id => {
+      const p = state.players.find(x => x.id == id);
+      if (p && !p.alive) p.deadVoteUsed = true;
+    });
     const nightNo = state.currentNight;
     const nomineeName = playerNameById(info.nominee);
     state.votes.push({
@@ -3005,6 +3060,9 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
+
+
+
 
 
 

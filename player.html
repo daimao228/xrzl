@@ -378,6 +378,20 @@ body::after { opacity:.10; }
 .lobby-msg.hidden { display:none; }
 .tip.wait { color:#a87c14; border-color: rgba(168,124,20,.4); background: rgba(255,248,230,.9); }
 
+/* ---------- 行动记录 ---------- */
+.action-log-box { margin:10px 2px 12px; padding:10px 12px; border-radius:12px;
+  background: rgba(255,255,255,.95); border:1px solid rgba(94,78,58,.22); }
+.action-log-box.hidden { display:none; }
+.al-title { font-size:12px; font-weight:700; color:#6b5b33; letter-spacing:1px; margin-bottom:7px; }
+.al-item { display:flex; align-items:center; gap:6px; font-size:12px; padding:4px 0;
+  border-top:1px dashed rgba(94,78,58,.16); }
+.al-item:first-child { border-top:none; }
+.al-night { font-size:10px; color:#8d8578; flex-shrink:0; }
+.al-text { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#241d2b; }
+.al-ok { font-size:10px; color:#2e7d5b; }
+.al-no { font-size:10px; color:#b03a3a; }
+.al-wait { font-size:10px; color:#a87c14; }
+
 /* ---------- 伪装身份 ---------- */
 .bluff-box { margin:10px 2px 12px; padding:10px 12px; border-radius:12px;
   background: rgba(255,255,255,.95); border:1px solid rgba(125,75,176,.45); }
@@ -465,6 +479,10 @@ html[data-phase="night"] body {
       <div class="rv-list" id="revealList"></div>
     </div>
     <div id="nightInfo" class="night-info"></div>
+    <div id="actionLogBox" class="action-log-box hidden">
+      <div class="al-title">📜 本局行动记录</div>
+      <div id="actionLogList"></div>
+    </div>
     <div id="dmMessagesBox" class="dm-message-box hidden">
       <div class="dm-title">📨 DM 私信</div>
       <div id="dmMessagesList"></div>
@@ -486,6 +504,7 @@ html[data-phase="night"] body {
   let myMessages = [];
   let gameReveal = null;   // 复盘数据（DM 公布的所有角色）
   let myBluffs = [];       // 小恶魔的三个伪装
+  let myActionLog = [];    // 本局自己的行动记录
   let submittedThisNight = false;
   let lastActionTs = 0;
   let loggedIn = false;
@@ -597,6 +616,7 @@ html[data-phase="night"] body {
     else if (msg.type === 'action_result') {
       if (msg.payload && String(msg.payload.seatId) === String(mySeatId - 1)) {
         const ok = msg.payload.status === 'approved';
+        updateLastActionStatus(ok ? 'approved' : 'rejected');
         if (!ok) { submittedThisNight = false; renderPlayerView(); }
         showActionMsg(ok ? '✅ DM 已确认你的行动' : '❌ DM 驳回了你的行动，可以重新提交',
                       ok);
@@ -849,6 +869,45 @@ html[data-phase="night"] body {
     }).join('');
   }
 
+  /* ---------- 自己的行动记录 ---------- */
+  const ACTION_KEY = 'botc_actions_' + getRoomCode();
+  function loadActionLog() {
+    try {
+      const raw = localStorage.getItem(ACTION_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      myActionLog = Array.isArray(arr) ? arr.slice(-40) : [];
+    } catch (e) { myActionLog = []; }
+  }
+  function saveActionLog() {
+    try { localStorage.setItem(ACTION_KEY, JSON.stringify(myActionLog.slice(-40))); } catch (e) {}
+  }
+  function pushActionLog(entry) {
+    myActionLog.push(entry);
+    if (myActionLog.length > 40) myActionLog = myActionLog.slice(-40);
+    saveActionLog();
+    renderActionLog();
+  }
+  function updateLastActionStatus(status) {
+    for (let i = myActionLog.length - 1; i >= 0; i--) {
+      if (myActionLog[i].status === 'pending') { myActionLog[i].status = status; break; }
+    }
+    saveActionLog();
+    renderActionLog();
+  }
+  function renderActionLog() {
+    const box = document.getElementById('actionLogBox');
+    const list = document.getElementById('actionLogList');
+    if (!box || !list) return;
+    if (!myActionLog.length) { box.classList.add('hidden'); list.innerHTML = ''; return; }
+    box.classList.remove('hidden');
+    list.innerHTML = myActionLog.slice().reverse().map(it => {
+      const badge = it.status === 'approved' ? '<span class="al-ok">已确认</span>'
+        : it.status === 'rejected' ? '<span class="al-no">被驳回</span>'
+        : '<span class="al-wait">待确认</span>';
+      return `<div class="al-item"><span class="al-night">第 ${it.night} 夜</span>` +
+        `<span class="al-text">${escapeHtml(it.text)}</span>${badge}</div>`;
+    }).join('');
+  }
   function renderDmMessages() {
     const box = document.getElementById('dmMessagesBox');
     const list = document.getElementById('dmMessagesList');
@@ -862,6 +921,7 @@ html[data-phase="night"] body {
   function renderPlayerView() {
     renderTable();
     renderBluffs();
+    renderActionLog();
     /* 白天/夜晚切换整体色调 */
     try { document.documentElement.dataset.phase = publicState.phase === 'day' ? 'day' : 'night'; } catch (e) {}
     const role = myRoleId ? ROLES[myRoleId] : null;
@@ -971,6 +1031,16 @@ html[data-phase="night"] body {
         ts: ts
       });
       submittedThisNight = true;
+      const names = targets.map(id => {
+        const t = (publicState.players || []).find(x => String(x.id) === String(id));
+        return t ? t.name : ('座位' + (Number(id) + 1));
+      });
+      const roleName = (ROLES[myRoleId] && ROLES[myRoleId].name) || '';
+      pushActionLog({
+        night: publicState.currentNight,
+        text: `对 ${names.join('、')} 使用「${roleName}」`,
+        status: 'pending'
+      });
       renderPlayerView();
       showActionMsg('已提交，等待 DM 确认…', true);
     });
@@ -982,6 +1052,7 @@ html[data-phase="night"] body {
   const myRoomLabelEl = document.getElementById('myRoomLabel');
   if (myRoomLabelEl) myRoomLabelEl.textContent = getRoomCode();
 
+  loadActionLog();
   let saved = null;
   try { saved = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY); } catch (e) {}
   if (saved) {
@@ -1038,4 +1109,7 @@ html[data-phase="night"] body {
 </script>
 </body>
 </html>
+
+
+
 
