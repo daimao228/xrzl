@@ -133,6 +133,23 @@ main { display: grid; grid-template-columns: 1fr 400px; gap: 16px; padding: 16px
   color: var(--text); background:#fff; border:1px solid var(--border); }
 .qp:hover { background: rgba(255,255,255,.22); }
 .mini-btn { font-size:11px; padding:3px 9px; border-radius:6px; cursor:pointer; }
+/* ---------- 主持人密码锁屏 ---------- */
+body.dm-locked { overflow: hidden; }
+body.dm-locked header, body.dm-locked main, body.dm-locked #specBar { visibility: hidden; }
+.dm-lock { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+  background: rgba(20,16,28,.58); backdrop-filter: blur(3px); }
+.dm-lock.hidden { display: none; }
+.dm-lock-card { width: min(92vw, 340px); background: #fff; border-radius: 14px; padding: 22px 20px 18px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.4); text-align: center; }
+.dm-lock-card .dl-title { font-size: 17px; font-weight: 700; color: #1f1f27; letter-spacing: 1px; }
+.dm-lock-card .dl-sub { font-size: 12px; color: #7a7a8c; margin: 6px 0 14px; }
+.dm-lock-card input { width: 100%; box-sizing: border-box; font-size: 14px; padding: 9px 12px;
+  border-radius: 8px; border: 1px solid #e0e0e6; margin-bottom: 10px; }
+.dm-lock-card input:focus { outline: none; border-color: #b8860b; box-shadow: 0 0 0 3px rgba(184,134,11,.15); }
+.dm-lock-card button { width: 100%; padding: 9px; border-radius: 8px; font-size: 14px; }
+.dm-lock-card .dl-msg { font-size: 12px; color: #c03030; min-height: 16px; margin-top: 6px; }
+.dm-lock-card .dl-tip { font-size: 10px; color: #9a9aa8; line-height: 1.5; margin-top: 10px; }
+
 /* 话术库编辑区 */
 .prompt-editor { margin-top:10px; padding:10px; border-radius:8px;
   background:#fff; border:1px solid var(--border); }
@@ -646,7 +663,16 @@ html[data-phase="night"] body {
 </style>
 </head>
 <body>
-
+<div id="dmLock" class="dm-lock hidden">
+  <div class="dm-lock-card">
+    <div class="dl-title">🔒 说书人端</div>
+    <div class="dl-sub">这个页面需要主持人密码才能操作</div>
+    <input id="dmLockPw" type="password" placeholder="输入主持人密码" autocomplete="current-password">
+    <button id="btnDmUnlock" class="primary">进入</button>
+    <div id="dmLockMsg" class="dl-msg"></div>
+    <div class="dl-tip">忘记密码：清掉浏览器里本站的数据即可（localStorage 的 botc_dm_v13，会同时清空对局存档）。</div>
+  </div>
+</div>
 <header>
   <h1>血染钟楼 · 说书人助手 <small>暗流涌动</small></h1>
   <div class="ctrl">
@@ -662,6 +688,7 @@ html[data-phase="night"] body {
     <button id="btnClearSeats">清空座位</button>
     <button id="btnSpectator">👁 旁观</button>
     <button id="btnReveal">🎭 复盘</button>
+    <button id="btnDmPw">🔒 密码</button>
   </div>
 </header>
 
@@ -842,7 +869,8 @@ let state = {
   rolesSent: false,  // 是否已经发过身份（发过之后玩家不能换座位）
   revealed: false,   // 复盘模式：是否已向所有玩家公布角色
   turnSeat: null,    // 夜晚顺序：当前轮到哪个座位（null = 不限制）
-  prompts: null      // 自定义话术库（null = 用默认）
+  prompts: null,     // 自定义话术库（null = 用默认）
+  dmPassword: ''     // 主持人密码（哈希后保存；空 = 不设密码）
 };
 
 let voteNomineeId = null;
@@ -853,6 +881,29 @@ let pendingActions = [];
 let seatOccupancy = new Map();
 
 const STORAGE_KEY = 'botc_dm_v13';
+
+/* ---------- 主持人密码 ---------- */
+let dmUnlocked = true;
+function hashPw(s) {
+  let h = 5381;
+  const str = 'botc:' + String(s);
+  for (let i = 0; i < str.length; i++) h = (((h << 5) + h) + str.charCodeAt(i)) >>> 0;
+  return 'h' + h.toString(16);
+}
+function showDmLock() {
+  document.body.classList.add('dm-locked');
+  const box = document.getElementById('dmLock');
+  if (box) box.classList.remove('hidden');
+  setTimeout(() => {
+    const el = document.getElementById('dmLockPw');
+    if (el) el.focus();
+  }, 60);
+}
+function hideDmLock() {
+  document.body.classList.remove('dm-locked');
+  const box = document.getElementById('dmLock');
+  if (box) box.classList.add('hidden');
+}
 
 function save() {
   try { state.pending = pendingActions; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
@@ -902,6 +953,7 @@ function load() {
     state.rolesSent = !!s.rolesSent;
     state.revealed = !!s.revealed;
     state.turnSeat = (typeof s.turnSeat === 'number' && s.turnSeat >= 1) ? s.turnSeat : null;
+    state.dmPassword = (typeof s.dmPassword === 'string') ? s.dmPassword : '';
     state.prompts = (Array.isArray(s.prompts) && s.prompts.length)
       ? s.prompts.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim())
       : null;
@@ -1996,6 +2048,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   dmChannel = openChannel((msg) => {
     if (!msg || !msg.type) return;
+    if (!dmUnlocked) return;   // 未解锁时说书人端不应答任何玩家请求
 
     if (msg.type === 'player_login') {
       const { seatId, username, password, playerId } = msg.payload || {};
@@ -2563,6 +2616,58 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   const freeBtn = document.getElementById('btnTurnFree');
   if (freeBtn) freeBtn.addEventListener('click', () => setNightTurn(null));
+  /* ---------- 主持人密码：解锁 / 设置 / 锁定 ---------- */
+  (function initDmLock() {
+    const input = document.getElementById('dmLockPw');
+    const msgEl = document.getElementById('dmLockMsg');
+    function tryUnlock() {
+      if (!input) return;
+      const v = String(input.value || '');
+      if (hashPw(v) === state.dmPassword) {
+        dmUnlocked = true;
+        try { sessionStorage.setItem('botc_dm_unlock', state.dmPassword); } catch (e) {}
+        hideDmLock();
+        if (msgEl) msgEl.textContent = '';
+        broadcastPublicState();
+      } else {
+        if (msgEl) msgEl.textContent = '密码不对';
+        input.value = '';
+        input.focus();
+      }
+    }
+    const unlockBtn = document.getElementById('btnDmUnlock');
+    if (unlockBtn) unlockBtn.addEventListener('click', tryUnlock);
+    if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+
+    const pwBtn = document.getElementById('btnDmPw');
+    if (pwBtn) pwBtn.addEventListener('click', () => {
+      if (state.dmPassword) {
+        const old = prompt('输入当前主持人密码：');
+        if (old === null) return;
+        if (hashPw(old) !== state.dmPassword) { alert('当前密码不对'); return; }
+        const nw = prompt('设置新密码（留空 = 取消密码）：', '');
+        if (nw === null) return;
+        const t = String(nw).trim();
+        state.dmPassword = t ? hashPw(t) : '';
+        save();
+        try {
+          if (state.dmPassword) sessionStorage.setItem('botc_dm_unlock', state.dmPassword);
+          else sessionStorage.removeItem('botc_dm_unlock');
+        } catch (e) {}
+        alert(state.dmPassword ? '已更新主持人密码' : '已取消主持人密码');
+      } else {
+        const nw = prompt('设置主持人密码（留空 = 不设置）：', '');
+        if (nw === null) return;
+        const t = String(nw).trim();
+        if (!t) return;
+        state.dmPassword = hashPw(t);
+        save();
+        try { sessionStorage.setItem('botc_dm_unlock', state.dmPassword); } catch (e) {}
+        alert('已设置主持人密码，下次打开这个页面需要先输入');
+      }
+    });
+  })();
+
   /* 把三个伪装发给小恶魔 */
   const tellBluffsBtn = document.getElementById('btnTellBluffs');
   if (tellBluffsBtn) tellBluffsBtn.addEventListener('click', () => {
@@ -2794,6 +2899,12 @@ document.addEventListener('DOMContentLoaded', function () {
   if (window.ResizeObserver) new ResizeObserver(() => layoutSeats()).observe(stage);
 
   load();
+  /* 设了密码：没解锁就先挡在锁屏 */
+  if (state.dmPassword) {
+    let tok = null;
+    try { tok = sessionStorage.getItem('botc_dm_unlock'); } catch (e) {}
+    if (tok !== state.dmPassword) { dmUnlocked = false; showDmLock(); }
+  }
   if (!state.players.length) {
     newGame(8);
   } else {
@@ -2807,6 +2918,9 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
+
+
+
 
 
 
