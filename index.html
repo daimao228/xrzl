@@ -130,6 +130,7 @@ body {
 }
 .panel { color:#241d2b; background: rgba(255,255,255,.82); }
 .sub { color:#7a705f; }
+.ver-line { text-align:center; font-size:10px; color:#8d8578; margin-top:18px; letter-spacing:.5px; }
 </style>
 </head>
 <body>
@@ -156,6 +157,7 @@ body {
 </div>
 
 <script src="supabase-config.js"></script>
+<script>window.APP_VERSION = '2026-11-21b';</script>
 <script src="shared.js"></script>
 <script>
 (function () {
@@ -195,12 +197,17 @@ function linkFor(page) { return pagePath(page) + '#room=' + encodeURIComponent(r
     el.addEventListener('click', (e) => {
       e.preventDefault(); e.stopPropagation();
       const pick = el.dataset.c === 'dm' ? dmLink : (el.dataset.c === 'spec' ? spectatorLink : playerLink);
-      const url = location.origin + new URL(pick.href).pathname + new URL(pick.href).search;
+      const u = new URL(pick.href, location.href);
+      const url = location.origin + u.pathname + u.search + u.hash;
       const done = () => { el.textContent = '已复制'; setTimeout(() => el.textContent = '复制链接', 1500); };
       if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, done);
       else { prompt('手动复制：', url); }
     });
   });
+
+  /* 版本标记：用来判断浏览器有没有拿到新页面 */
+  const verEl = document.getElementById('verLine');
+  if (verEl) verEl.textContent = '版本 ' + (window.APP_VERSION || 'dev') + ' · ' + location.pathname;
 
   if (!isSupabaseReady()) {
     statusEl.innerHTML = '<span class="warn">⚠ 还没配置 Supabase</span>：现在只能在同一台电脑的多个标签页里玩。' +
@@ -229,7 +236,11 @@ function linkFor(page) { return pagePath(page) + '#room=' + encodeURIComponent(r
   });
 })();
 </script>
+<div id="verLine" class="ver-line"></div>
 </body>
 </html>
+
+
+
 
 
