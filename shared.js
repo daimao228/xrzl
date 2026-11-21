@@ -1,4 +1,4 @@
-/* shared.js —— DM 端与玩家端共用 */
+﻿/* shared.js —— DM 端与玩家端共用 */
 
 const ROLES = {
   washerwoman:   { name:'洗衣妇',     team:'townsfolk', night:'first', ability:'首夜：得知两名玩家中有一人是某个特定镇民。', action:'info', interaction:'passive' },
@@ -217,9 +217,19 @@ function isSupabaseReady() {
   return true;
 }
 
+/* 从 #room=xxx 或 #xxx 里取房间号（帽子云这类网关对 ?查询 会 404，所以优先用 #） */
+function roomFromHash() {
+  const h = String(location.hash || '').replace(/^#/, '');
+  if (!h) return '';
+  if (h.indexOf('room=') === 0) return decodeURIComponent(h.slice(5));
+  if (h.indexOf('=') === -1) return decodeURIComponent(h);
+  return '';
+}
+
 function getRoomCode() {
   let r = '';
   try { r = new URLSearchParams(location.search).get('room') || ''; } catch (e) {}
+  if (!r) r = roomFromHash();
   if (!r) { try { r = localStorage.getItem('botc_last_room') || ''; } catch (e) {} }
   r = String(r || RT_CFG.defaultRoom || 'lobby')
     .toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
@@ -228,14 +238,15 @@ function getRoomCode() {
   return r;
 }
 
-/* 换房间：带 ?room= 重新加载页面（存档都在浏览器里，不会丢） */
+/* 换房间：只用 #room= 重新加载（存档都在浏览器里，不会丢） */
 function switchRoom(newRoom) {
   const r = String(newRoom || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
   if (!r) return false;
   try { localStorage.setItem('botc_last_room', r); } catch (e) {}
   try {
     const u = new URL(location.href);
-    u.searchParams.set('room', r);
+    u.search = '';
+    u.hash = 'room=' + r;
     location.href = u.href;
     return true;
   } catch (e) {

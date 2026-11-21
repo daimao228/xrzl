@@ -2584,8 +2584,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ---------- 旁观者视角：信息条 + 复制 ---------- */
   function specLinkUrl() {
-    try { return new URL('spectator.html?room=' + getRoomCode(), location.href).href; }
-    catch (e) { return 'spectator.html?room=' + getRoomCode(); }
+    const name = (location.protocol === 'file:') ? 'spectator.html' : 'spectator';
+    try { return new URL(name + '#room=' + getRoomCode(), location.href).href; }
+    catch (e) { return name + '#room=' + getRoomCode(); }
   }
   function showSpecMsg(t) {
     const el = document.getElementById('specMsg');
@@ -3109,6 +3110,8 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
+
+
 
 
 

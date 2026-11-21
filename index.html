@@ -174,7 +174,12 @@ body {
   roomEl.value = fromUrl && fromUrl !== 'lobby' ? fromUrl : randRoom();
 
   function base() { return location.href.split(/[?#]/)[0].replace(/[^/]*$/, ''); }
-  function linkFor(page) { return page + '?room=' + encodeURIComponent(roomEl.value.trim().toLowerCase() || 'lobby'); }
+  /* 帽子云的网关会给带 .html 的路径做 308 跳转、带 ?查询 的还会 307 补斜杠 → 404，
+   所以线上直接用无扩展名路径 + #房间号；本地 file:// 打开时仍用 .html */
+function pagePath(page) {
+  return (location.protocol === 'file:') ? page : page.replace(/\.html$/i, '');
+}
+function linkFor(page) { return pagePath(page) + '#room=' + encodeURIComponent(roomEl.value.trim().toLowerCase() || 'lobby'); }
 
   function refresh() {
     dmLink.href = linkFor('dm.html');
@@ -226,3 +231,5 @@ body {
 </script>
 </body>
 </html>
+
+
