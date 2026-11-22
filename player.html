@@ -1064,6 +1064,20 @@ html[data-phase="night"] body {
   loadActionLog();
   let saved = null;
   try { saved = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY); } catch (e) {}
+
+  /* 从游戏大厅进来：直接用大厅身份，跳过登录框 */
+  if (!saved) {
+    let lobbyId = null;
+    try { lobbyId = JSON.parse(localStorage.getItem('botc_lobby') || 'null'); } catch (e) {}
+    if (lobbyId && lobbyId.name) {
+      myUsername = String(lobbyId.name).slice(0, 10);
+      myPassword = lobbyId.pass || 'L0';
+      myPlayerId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      document.getElementById('usernameInput').value = myUsername;
+      document.getElementById('passwordInput').value = myPassword;
+      enterLobby();
+    }
+  }
   if (saved) {
     try {
       const s = JSON.parse(saved);
@@ -1118,6 +1132,7 @@ html[data-phase="night"] body {
 </script>
 </body>
 </html>
+
 
 
 

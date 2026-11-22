@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>游戏大厅</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(circle at 50% 20%, #1c2436 0%, #0b0e16 70%);
+    color: #f2ecdd; padding: 18px 14px;
+  }
+  .wrap { width: min(96vw, 560px); }
+  h1 { font-size: 20px; letter-spacing: 6px; text-align: center; margin: 0 0 4px; color: #e8c65c; }
+  .sub { text-align: center; font-size: 11px; color: #8d8578; letter-spacing: 2px; margin-bottom: 18px; }
+  .panel {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 14px; padding: 14px; margin-bottom: 14px;
+  }
+  label { display: block; font-size: 11px; color: #a89f8c; margin-bottom: 5px; letter-spacing: 1px; }
+  input {
+    width: 100%; padding: 10px 12px; border-radius: 9px; font-size: 15px;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); color: #fff;
+    outline: none;
+  }
+  input:focus { border-color: #e8c65c; box-shadow: 0 0 0 3px rgba(232,198,92,.15); }
+  .row { display: flex; gap: 8px; }
+  .row > div { flex: 1; }
+  .btn {
+    display: block; width: 100%; margin-top: 10px; padding: 11px; border-radius: 10px; cursor: pointer;
+    font-size: 14px; font-family: inherit; border: 1px solid rgba(255,255,255,.16);
+    background: rgba(255,255,255,.08); color: #f2ecdd;
+  }
+  .btn.primary {
+    background: linear-gradient(180deg, #c8a335, #96700f); border-color: #c8a335; color: #1a1408; font-weight: 700;
+  }
+  .btn:active { transform: translateY(1px); }
+  .entry {
+    display: flex; align-items: center; gap: 12px; padding: 14px; margin-top: 10px;
+    border-radius: 12px; text-decoration: none; color: inherit;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+  }
+  .entry:active { background: rgba(255,255,255,.12); }
+  .entry .ico { font-size: 26px; width: 34px; text-align: center; }
+  .entry b { display: block; font-size: 14px; }
+  .entry span { font-size: 11px; color: #9a9a8c; }
+  .tip { font-size: 11px; color: #8d8578; line-height: 1.7; margin-top: 12px; }
+  .status { font-size: 12px; color: #7ad19a; min-height: 18px; margin-top: 8px; }
+  .ver { text-align: center; font-size: 10px; color: #5d5866; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>游戏大厅</h1>
+  <div class="sub">GAME LOBBY</div>
+
+  <div class="panel">
+    <div class="row">
+      <div>
+        <label>你的名字</label>
+        <input id="nameInput" maxlength="10" placeholder="例如：小明">
+      </div>
+      <div>
+        <label>房间号</label>
+        <input id="roomInput" maxlength="32" placeholder="例如：bg2">
+      </div>
+    </div>
+    <button class="btn primary" id="btnEnter">保存并进入大厅</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <a class="entry" id="linkPlayer" href="#">
+    <div class="ico">🎭</div>
+    <div><b>血染钟楼 · 玩家端</b><span>不用再输入账号密码，进去点座位就坐</span></div>
+  </a>
+  <a class="entry" id="linkSpec" href="#">
+    <div class="ico">👁</div>
+    <div><b>血染钟楼 · 旁观端</b><span>只读观战，需要说书人给的旁观密码</span></div>
+  </a>
+  <a class="entry" id="linkDgzl" href="#">
+    <div class="ico">🪳</div>
+    <div><b>德国蟑螂</b><span>同一房间的朋友一起玩</span></div>
+  </a>
+
+  <div class="tip">
+    · 说书人端（DM）不在这里，只有主持人自己用 <code>dm#room=房间号</code> 打开。<br>
+    · 大厅只需要填一次名字，之后换页面都不用再登录。<br>
+    · 房间号要和大家一致，否则看不到同一个牌桌。
+  </div>
+  <div class="ver" id="verLine"></div>
+</div>
+
+<script>
+window.APP_VERSION = '2026-11-22';
+(function () {
+  const KEY = 'botc_lobby';
+  const nameEl = document.getElementById('nameInput');
+  const roomEl = document.getElementById('roomInput');
+  const statusEl = document.getElementById('status');
+  const verEl = document.getElementById('verLine');
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY) || 'null') || null; } catch (e) { return null; }
+  }
+  function save(o) {
+    try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
+    try { localStorage.setItem('botc_last_room', o.room); } catch (e) {}
+  }
+  /* 由名字生成固定的密码，换设备也能用同一个身份 */
+  function passFor(name) {
+    let h = 5381;
+    const s = 'dgzl:' + name;
+    for (let i = 0; i < s.length; i++) h = (((h << 5) + h) + s.charCodeAt(i)) >>> 0;
+    return 'L' + h.toString(36) + 'x';
+  }
+  function sanitizeRoom(v) {
+    return String(v || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32) || 'lobby';
+  }
+  /* 帽子云对 .html 会 308、对 ?查询 会 307 补斜杠 → 线上用无扩展名 + #房间号 */
+  function pagePath(page) {
+    return (location.protocol === 'file:') ? page : page.replace(/\.html$/i, '');
+  }
+
+  function refresh() {
+    const name = nameEl.value.trim();
+    const room = sanitizeRoom(roomEl.value.trim());
+    const p = pagePath;
+    document.getElementById('linkPlayer').href = p('player.html') + '#room=' + encodeURIComponent(room);
+    document.getElementById('linkSpec').href = p('spectator.html') + '#room=' + encodeURIComponent(room);
+    document.getElementById('linkDgzl').href = p('dgzl.html') + '#room=' + encodeURIComponent(room);
+    if (name) statusEl.textContent = '以「' + name + '」的身份进入，房间 ' + room;
+    else statusEl.textContent = '先填名字，下面三个入口就能直接进';
+  }
+
+  const savedId = load();
+  if (savedId && savedId.name) nameEl.value = savedId.name;
+  const urlRoom = (function () {
+    const h = String(location.hash || '').replace(/^#/, '');
+    return (h.indexOf('room=') === 0) ? decodeURIComponent(h.slice(5)) : '';
+  })();
+  roomEl.value = sanitizeRoom(urlRoom || (savedId && savedId.room) || localStorage.getItem('botc_last_room') || 'lobby');
+
+  nameEl.addEventListener('input', refresh);
+  roomEl.addEventListener('input', refresh);
+
+  document.getElementById('btnEnter').addEventListener('click', () => {
+    const name = nameEl.value.trim();
+    if (!name) { statusEl.textContent = '请先填名字'; nameEl.focus(); return; }
+    const room = sanitizeRoom(roomEl.value.trim());
+    roomEl.value = room;
+    save({ name: name, pass: passFor(name), room: room });
+    statusEl.textContent = '已保存 ✓ 点下面的入口直接进';
+  });
+
+  if (savedId && savedId.name) save({ name: savedId.name, pass: passFor(savedId.name), room: sanitizeRoom(roomEl.value) });
+  refresh();
+  verEl.textContent = '版本 ' + window.APP_VERSION;
+})();
+</script>
+</body>
+</html>
