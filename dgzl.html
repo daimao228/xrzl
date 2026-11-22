@@ -457,6 +457,7 @@
   let netRole = 'solo';       // solo | host | client
   let netChannel = null;
   let netApplying = false;
+  let hostTimer = null;
   const NET_ID = 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 
   function netSend(type, payload) {
@@ -504,6 +505,10 @@
       const p = msg.payload || {};
       if (msg.type === 'dg_slam') { slamTable(); return; }
       if (msg.type === 'dg_state') {
+        if (netRole === 'solo') {
+          netRole = 'client';
+          clearTimeout(hostTimer);
+        }
         if (netRole === 'host') {
           if (p.hostId && p.hostId < NET_ID) { netRole = 'client'; MY_SEAT = -1; applyNetState(p); }
         } else {
@@ -511,7 +516,25 @@
         }
         return;
       }
-      if (msg.type === 'dg_seat') { MY_SEAT = p.seat | 0; renderAll(); return; }
+      if (msg.type === 'dg_seat') {
+        if (p.id && p.id !== NET_ID) return;   // 只认发给自己的座位
+        MY_SEAT = p.seat | 0;
+        renderAll();
+        return;
+      }
+      if (msg.type === 'dg_hello') {
+        if (netRole !== 'host' || p.id === NET_ID) return;
+        let idx = players.findIndex(x => x.netId === p.id);
+        if (idx < 0 && players.length < playerCount) {
+          idx = players.length;
+          players.push({ id: idx, name: p.name || ('玩家' + (idx + 1)), hand: [], faceUp: [], lost: false, netId: p.id });
+        }
+        if (idx >= 0) {
+          netSend('dg_seat', { id: p.id, seat: idx });
+          netBroadcast();
+        }
+        return;
+      }
       if (msg.type === 'dg_join') {
         if (netRole === 'host' && p.id !== NET_ID && !players.some(x => x.netId === p.id)) {
           if (players.length < playerCount) {
@@ -527,14 +550,12 @@
     });
     /* 选举：等 1.2 秒，收到别人的 state 就当客户端，否则当房主 */
     netSend('dg_hello', { id: NET_ID, name: MY_NAME || '玩家' });
-    let gotState = false;
-    const origHandler = netChannel;
-    setTimeout(() => {
+    hostTimer = setTimeout(() => {
       if (netRole === 'solo') {
         netRole = 'host';
         MY_SEAT = 0;
         initGame();
-        netSend('dg_state', snapshotState());
+        netBroadcast();
       }
     }, 1200);
   }
@@ -1226,6 +1247,7 @@
 </script>
 </body>
 </html>
+
 
 
 
