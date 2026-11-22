@@ -541,7 +541,7 @@
         if (players[seat].netId && players[seat].netId !== p.id) return;   // 已有人
         players.forEach(x => { if (x.netId === p.id) x.netId = null; });
         players[seat].netId = p.id;
-        players[seat].name = pendingNames[p.id] || p.name || players[seat].name;
+        players[seat].name = p.name || pendingNames[p.id] || players[seat].name;
         netSend('dg_seat', { id: p.id, seat: seat });
         netBroadcast();
         return;
@@ -717,7 +717,10 @@
       if (netRole === 'client' && !p.netId) {
         seat.style.cursor = 'pointer';
         seat.addEventListener('click', () => {
-          netSend('dg_claim', { id: NET_ID, seat: idx });
+          netSend('dg_claim', { id: NET_ID, seat: idx, name: MY_NAME || '玩家' });
+          MY_SEAT = idx;          // 本地先坐下，等房主确认后会被纠正
+          if (players[idx]) { players[idx].name = MY_NAME || players[idx].name; players[idx].netId = NET_ID; }
+          renderAll();
         });
       }
       tableArea.appendChild(seat);
@@ -843,7 +846,10 @@
     if (netRole === 'client' && MY_SEAT < 0) {
       handBar.innerHTML = '<div class="hand-bar-hint">请点牌桌上的「空位」入座，或点下面的按钮自动入座<br><button id="autoSeatBtn" style="margin-top:8px;padding:8px 16px;border-radius:20px;font-family:inherit;cursor:pointer;">⚡ 自动入座</button></div>';
       const ab = document.getElementById('autoSeatBtn');
-      if (ab) ab.addEventListener('click', (e) => { e.stopPropagation(); netSend('dg_claim', { id: NET_ID, seat: -1 }); });
+      if (ab) ab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        netSend('dg_claim', { id: NET_ID, seat: -1, name: MY_NAME || '玩家' });
+      });
       return;
     }
     const viewIdx = (netRole === 'client') ? MY_SEAT : currentPlayerIndex;
@@ -1085,7 +1091,10 @@
     if (netRole === 'client' && MY_SEAT < 0) {
       handBar.innerHTML = '<div class="hand-bar-hint">请点牌桌上的「空位」入座，或点下面的按钮自动入座<br><button id="autoSeatBtn" style="margin-top:8px;padding:8px 16px;border-radius:20px;font-family:inherit;cursor:pointer;">⚡ 自动入座</button></div>';
       const ab = document.getElementById('autoSeatBtn');
-      if (ab) ab.addEventListener('click', (e) => { e.stopPropagation(); netSend('dg_claim', { id: NET_ID, seat: -1 }); });
+      if (ab) ab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        netSend('dg_claim', { id: NET_ID, seat: -1, name: MY_NAME || '玩家' });
+      });
       return;
     }
     const viewIdx = (netRole === 'client') ? MY_SEAT : currentPlayerIndex;
@@ -1277,6 +1286,7 @@
 </script>
 </body>
 </html>
+
 
 
 
