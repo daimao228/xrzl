@@ -122,6 +122,11 @@ window.APP_VERSION = '2026-11-22';
   function pagePath(page) {
     return (location.protocol === 'file:') ? page : page.replace(/\.html$/i, '');
   }
+  /* 德国蟑螂在 ../dgzl/ 里：线上用目录（帽子云会补斜杠），本地 file:// 用 index.html */
+  function dgzlPath(room) {
+    const base = (location.protocol === 'file:') ? '../dgzl/index.html' : '../dgzl/';
+    return base + '#room=' + encodeURIComponent(room);
+  }
 
   function refresh() {
     const name = nameEl.value.trim();
@@ -129,7 +134,7 @@ window.APP_VERSION = '2026-11-22';
     const p = pagePath;
     document.getElementById('linkPlayer').href = p('player.html') + '#room=' + encodeURIComponent(room);
     document.getElementById('linkSpec').href = p('spectator.html') + '#room=' + encodeURIComponent(room);
-    document.getElementById('linkDgzl').href = p('dgzl.html') + '#room=' + encodeURIComponent(room);
+    document.getElementById('linkDgzl').href = dgzlPath(room);
     if (name) statusEl.textContent = '以「' + name + '」的身份进入，房间 ' + room;
     else statusEl.textContent = '先填名字，下面三个入口就能直接进';
   }

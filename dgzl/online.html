@@ -1,0 +1,1878 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>德国蟑螂 · 皇家圆桌（联机版）</title>
+<style>
+  * { box-sizing: border-box; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; user-select: none; }
+  body {
+    margin: 0; min-height: 100vh;
+    background: radial-gradient(circle at 50% 30%, #1a2a1a 0%, #0a120a 100%);
+    display: flex; justify-content: center; align-items: center;
+    padding: 12px; touch-action: manipulation;
+  }
+  .game-wrapper {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    width: min(96vw, 820px);
+  }
+  .net-bar {
+    display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap;
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+    border-radius: 20px; padding: 5px 14px; font-size: 0.75rem; color: #cfe0c8;
+  }
+  .net-bar .dot { color: #56705a; }
+  .mini-btn {
+    background: #3d5e3d; color: #dff0dc; border: 1px solid #6b8e6b;
+    border-radius: 12px; padding: 1px 9px; font-size: 0.7rem; cursor: pointer; font-family: inherit;
+  }
+  .mini-btn:active { transform: translateY(1px); }
+
+  .table-area {
+    position: relative; width: 100%; aspect-ratio: 1/1; max-width: 660px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #3e5e3e 0%, #2a3e2a 60%, #1a2a1a 100%);
+    border: 6px solid #5a7a5a;
+    box-shadow: inset 0 0 80px #0a120a, 0 20px 50px rgba(0,0,0,0.7), 0 0 0 3px #2a3e2a;
+  }
+  .seat {
+    position: absolute; transform: translate(-50%, -50%);
+    background: rgba(45,70,45,0.95);
+    border: 2px solid #6b8e6b; border-radius: 18px;
+    padding: 7px 5px;
+    box-shadow: 0 6px 0 #1a2a1a, inset 0 0 12px rgba(0,0,0,0.4);
+    transition: all 0.15s ease;
+    text-align: center; z-index: 2;
+  }
+  .seat.active {
+    border-color: #f5d742;
+    box-shadow: 0 0 20px #f5d74288, 0 6px 0 #1a2a1a;
+    background: rgba(70,105,70,0.95);
+  }
+  .seat.free {
+    border-style: dashed; border-color: #6f9a78; background: rgba(35,55,35,0.72);
+    cursor: pointer;
+  }
+  .seat.free .seat-name { color: #93b89a; font-weight: 600; font-size: 0.72rem; }
+  .seat.you { border-color: #7ad19a; box-shadow: 0 0 14px rgba(122,209,154,.5), 0 6px 0 #1a2a1a; }
+  .seat.drop-highlight {
+    border-color: #ffae42;
+    background: rgba(95,125,75,0.98);
+    box-shadow: 0 0 28px #ffae42cc, 0 6px 0 #1a2a1a;
+    transform: translate(-50%, -50%) scale(1.07);
+    z-index: 6;
+  }
+  .seat.targetable {
+    border: 2px dashed #ffae42;
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 8px #ffae4266, 0 6px 0 #1a2a1a; }
+    50% { box-shadow: 0 0 22px #ffae42cc, 0 6px 0 #1a2a1a; }
+  }
+  .seat-name {
+    font-weight: 800; color: #fff3cf; font-size: 0.82rem;
+    margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .seat-you-badge {
+    display: inline-block; margin-left: 3px; font-size: 0.55rem; font-weight: 700;
+    background: #2e7d5b; color: #eafff2; border-radius: 8px; padding: 0 5px; vertical-align: 2px;
+  }
+  .seat-hand-count {
+    display: inline-block; background: #1a2a1a; color: #c8e0c0;
+    font-size: 0.63rem; padding: 1px 8px; border-radius: 20px; margin-bottom: 3px;
+  }
+  .seat-face-up {
+    display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; min-height: 18px;
+  }
+  .face-badge {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: #e6dbb0; color: #1e2a1e; font-size: 0.58rem; font-weight: 700;
+    padding: 1px 5px 1px 2px; border-radius: 10px; border: 1px solid #7a6a4a; white-space: nowrap;
+  }
+  .face-badge img { width: 17px; height: 25px; object-fit: cover; border-radius: 3px; display: block; }
+  .face-badge.crown { background: #f5d742; border-color: #a68b5b; }
+  .face-badge.penalty { background: #d88a6a; border-color: #8a4a3a; }
+  .seat.empty-badges span.seat-empty { color: #6a8a6a; font-size: 0.58rem; }
+
+  .center-area {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 7px;
+    z-index: 1; width: 200px;
+  }
+  .center-card {
+    width: 82px; height: 114px; border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 3px solid #b39b6b;
+    box-shadow: 0 6px 0 #1a1a1a, 0 0 0 2px #d4b87a;
+    transition: transform 0.1s, box-shadow 0.1s;
+    user-select: none;
+  }
+  .center-card.card-back {
+    background: repeating-linear-gradient(45deg, #3d5e3d, #3d5e3d 8px, #2e4a2e 8px, #2e4a2e 16px);
+    color: #eee7d0; font-size: 2rem; font-weight: bold; text-shadow: 2px 2px 0 #1e2a1e;
+  }
+  .center-card.draggable { cursor: grab; touch-action: none; }
+  .center-card.draggable:active { cursor: grabbing; }
+  .center-card.draggable:hover { transform: translateY(-4px); box-shadow: 0 10px 0 #1a1a1a, 0 0 0 2px #d4b87a; }
+  .center-placeholder {
+    width: 150px; min-height: 46px; border-radius: 12px;
+    border: 2px dashed #5a7a5a;
+    display: flex; align-items: center; justify-content: center;
+    color: #8ab08a; font-size: 0.68rem; text-align: center; padding: 8px; line-height: 1.4;
+  }
+  .center-claim {
+    background: rgba(20,35,20,0.92); color: #ffecb3;
+    font-size: 0.66rem; padding: 4px 10px; border-radius: 18px;
+    text-align: center; max-width: 190px; border: 1px solid #b8a86b; line-height: 1.3;
+  }
+  .penalty-stack-info {
+    background: rgba(60,35,25,0.9); color: #ffccaa;
+    font-size: 0.6rem; padding: 2px 10px; border-radius: 14px;
+    border: 1px solid #d88a6a;
+  }
+  .pass-btn {
+    background: #c9b37e; color: #1e2a1e; border: none;
+    padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.66rem;
+    cursor: pointer; box-shadow: 0 3px 0 #7a6a4a;
+  }
+  .pass-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #7a6a4a; }
+  .pass-actions { display: flex; gap: 7px; margin-top: 2px; flex-wrap: wrap; justify-content: center; }
+  .pass-actions button {
+    padding: 6px 14px; border-radius: 24px; border: none;
+    font-weight: 700; font-size: 0.72rem; cursor: pointer;
+    transition: 0.08s; white-space: nowrap;
+  }
+  .believe-btn { background: #6f9e6f; color: #f0f7e0; box-shadow: 0 3px 0 #3a553a; }
+  .doubt-btn { background: #d88a6a; color: #2a1a0a; box-shadow: 0 3px 0 #8a4a3a; }
+  .pass-actions button:active { transform: translateY(2px); box-shadow: 0 1px 0 #333; }
+
+  /* ===== 手牌区 ===== */
+  .hand-bar {
+    width: 100%; max-width: 820px; min-height: 150px;
+    background: rgba(25,40,25,0.88);
+    border: 2px solid #5a7a5a; border-radius: 20px;
+    padding: 14px 22px 20px;
+    display: flex; flex-wrap: wrap;
+    gap: 18px 28px;
+    justify-content: center; align-items: flex-end;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    overflow: visible;
+  }
+  .hand-hint {
+    flex-basis: 100%; text-align: center; color: #8fb08f;
+    font-size: 0.72rem; line-height: 1.5; margin-bottom: 2px;
+  }
+  .hand-group {
+    display: flex; align-items: flex-end;
+    position: relative; padding-top: 8px; padding-right: 4px;
+  }
+  .hand-card {
+    width: 78px; height: 112px; flex-shrink: 0; margin-left: -42px;
+    background: linear-gradient(165deg, #fefcf3 0%, #f3ecd8 100%);
+    border-radius: 9px; border: 2px solid #4a3a26;
+    box-shadow: -3px 0 6px rgba(0,0,0,0.45), 0 4px 0 #1a1a1a, 0 0 0 1px #d4b87a;
+    overflow: hidden; cursor: grab; touch-action: none;
+    transition: transform 0.13s ease, box-shadow 0.13s ease;
+    color: #1e2a1e; position: relative; z-index: 1;
+  }
+  .hand-group .hand-card:first-child { margin-left: 0; }
+  .hand-card:hover {
+    transform: translateY(-26px) scale(1.07);
+    box-shadow: 0 22px 28px rgba(0,0,0,0.55), 0 0 0 3px #f5d742, 0 0 32px #f5d742aa;
+    z-index: 80;
+  }
+  .hand-card:active { cursor: grabbing; }
+  .hand-card.crown-card { background: linear-gradient(165deg, #fffbea 0%, #f5e6b0 100%); border-color: #b89b4a; }
+  .hand-card.crown-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+    border-radius: 8px 0 0 8px; background: linear-gradient(#f5d742, #b89b4a);
+  }
+  .hand-card.crown-card::after {
+    content: '👑'; position: absolute; top: 3px; right: 4px; font-size: 0.95rem;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45));
+  }
+  .hand-card .card-art { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 7px; pointer-events: none; }
+  .hand-card .card-name {
+    position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%);
+    font-size: 0.54rem; font-weight: 800;
+    background: rgba(212, 194, 155, 0.94);
+    padding: 1px 6px; border-radius: 9px; border: 1px solid #7a6a4a;
+    white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; z-index: 2;
+  }
+  .hand-bar-hint { color: #8fb08f; font-size: 0.86rem; text-align: center; font-style: italic; padding: 26px 16px; line-height: 1.6; }
+
+  .log-panel {
+    width: 100%; max-width: 820px;
+    background: rgba(20,30,20,0.92);
+    border: 1px solid #4a6a4a; border-radius: 14px;
+    padding: 8px 14px; color: #c8e0c0; font-size: 0.8rem;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .log-text { flex: 1; line-height: 1.4; max-height: 92px; overflow-y: auto; min-height: 20px; }
+  .log-line { padding: 1px 0; }
+  .log-line:first-child { color: #ffe9a8; }
+  .count-row { display: flex; align-items: center; gap: 7px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .count-row span { font-size: 0.7rem; color: #9ab89a; }
+  .count-row select {
+    background: #1a2a1a; color: #d8ecd0; border: 1px solid #4a6a4a;
+    border-radius: 6px; padding: 3px 6px; font-size: 0.76rem; font-family: inherit;
+  }
+  .reset-btn {
+    background: #6b8e6b; color: #f0f7e0; border: none;
+    padding: 7px 14px; border-radius: 30px; font-weight: 700;
+    cursor: pointer; box-shadow: 0 4px 0 #3a553a; font-size: 0.76rem; flex-shrink: 0;
+  }
+  .reset-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #3a553a; }
+  .reset-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: 0 4px 0 #2a3a2a; }
+
+  .game-over-banner {
+    background: rgba(20,35,20,0.96); border: 3px solid #f5d742;
+    border-radius: 20px; padding: 14px 18px; color: #f5d742;
+    font-weight: 800; font-size: 0.9rem; text-align: center;
+    box-shadow: 0 0 40px #f5d74266; width: 220px; line-height: 1.5;
+  }
+
+  .drag-clone {
+    position: fixed; pointer-events: none; z-index: 9999;
+    transform: rotate(-5deg) scale(1.12);
+    opacity: 0.96;
+    box-shadow: 0 24px 34px rgba(0,0,0,0.75), 0 0 0 3px #f5d742, 0 0 30px #f5d742aa !important;
+    filter: brightness(1.08);
+  }
+  .drag-clone::before, .drag-clone::after { display: none !important; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(3px); padding: 12px;
+  }
+  .modal {
+    background: #2e4a2e; border: 3px solid #6b8e6b; border-radius: 24px;
+    padding: 18px 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    max-width: 92vw; max-height: 90vh; overflow: auto; text-align: center;
+  }
+  .modal h3 { color: #f5e6b0; margin: 0 0 14px 0; font-size: 1rem; }
+  .bug-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+  .bug-option {
+    background: #e6dbb0; border: 2px solid #7a6a4a; border-radius: 12px;
+    padding: 7px 5px; cursor: pointer; font-weight: 700; color: #1e2a1e;
+    font-size: 0.7rem; line-height: 1.3; transition: 0.1s; box-shadow: 0 3px 0 #a68b5b;
+  }
+  .bug-option:hover { background: #f5e6b0; transform: translateY(-2px); box-shadow: 0 5px 0 #a68b5b; }
+  .bug-option:active { transform: translateY(2px); box-shadow: 0 1px 0 #a68b5b; }
+  .bug-option .bug-thumb {
+    display: block; width: 100%; aspect-ratio: 7 / 10; object-fit: cover;
+    border-radius: 7px; border: 1px solid #7a6a4a; margin-bottom: 4px;
+  }
+  .bug-option .bug-label { display: block; font-size: 0.66rem; line-height: 1.2; }
+  .bug-option.crown-option { background: #f5e6b0; border-color: #b89b4a; }
+  .cancel-btn {
+    background: #6b8e6b; color: #f0f7e0; border: none;
+    padding: 8px 24px; border-radius: 30px; font-weight: 700;
+    cursor: pointer; box-shadow: 0 4px 0 #3a553a; margin-top: 4px;
+  }
+  .cancel-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #3a553a; }
+
+  .pass-target-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 16px; }
+  .pass-target-btn {
+    background: rgba(45,70,45,0.95); border: 2px solid #6b8e6b;
+    border-radius: 14px; padding: 8px 14px; cursor: pointer;
+    font-weight: 700; color: #fff3cf; font-size: 0.82rem;
+    box-shadow: 0 4px 0 #1a2a1a; transition: 0.1s; min-width: 88px;
+  }
+  .pass-target-btn:hover {
+    background: rgba(70,105,70,0.98); border-color: #f5d742;
+    transform: translateY(-2px); box-shadow: 0 6px 0 #1a2a1a, 0 0 14px #f5d74288;
+  }
+  .pass-target-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a2a1a; }
+
+  .slam-btn {
+    position: fixed; right: 16px; bottom: 22px; z-index: 50;
+    padding: 12px 18px; border-radius: 30px; cursor: pointer;
+    font-family: inherit; font-size: 15px; font-weight: 800;
+    color: #1a1408; background: linear-gradient(180deg, #ffd75e, #d9a520);
+    border: 2px solid #f5d742; box-shadow: 0 6px 18px rgba(0,0,0,.45);
+    animation: slamBtnPulse 1s ease-in-out infinite;
+  }
+  .slam-btn.hidden { display: none; }
+  @keyframes slamBtnPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  .slam-hand {
+    position: fixed; left: 50%; top: 50%; z-index: 90; pointer-events: none;
+    font-size: 120px; transform-origin: 50% 90%;
+    animation: slamHand .5s cubic-bezier(.3,.9,.4,1) forwards;
+    filter: drop-shadow(0 12px 18px rgba(0,0,0,.55));
+  }
+  @keyframes slamHand {
+    0%   { transform: translate(-50%, -260%) rotate(-30deg) scale(1.7); opacity: 0; }
+    45%  { transform: translate(-50%, -70%) rotate(-6deg) scale(1.25); opacity: 1; }
+    55%  { transform: translate(-50%, -46%) rotate(4deg) scale(1); opacity: 1; }
+    75%  { transform: translate(-50%, -60%) rotate(2deg) scale(1.04); opacity: .95; }
+    100% { transform: translate(-50%, -90%) rotate(0deg) scale(1); opacity: 0; }
+  }
+  .table-area.shake { animation: tableShake .5s cubic-bezier(.36,.07,.19,.97); }
+  @keyframes tableShake {
+    0%,100% { transform: translate(0,0) rotate(0); }
+    12% { transform: translate(-7px,5px) rotate(-1.1deg); }
+    25% { transform: translate(6px,-6px) rotate(1deg); }
+    38% { transform: translate(-5px,-4px) rotate(-.8deg); }
+    52% { transform: translate(5px,5px) rotate(.7deg); }
+    68% { transform: translate(-3px,3px) rotate(-.4deg); }
+    84% { transform: translate(2px,-2px) rotate(.2deg); }
+  }
+  .table-area::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }
+  .table-area.slam-flash::after {
+    background: radial-gradient(circle, rgba(255,240,180,.55) 0%, rgba(255,215,90,.18) 35%, transparent 62%);
+    animation: slamFlash .45s ease-out forwards;
+  }
+  @keyframes slamFlash { from { opacity: 1; } to { opacity: 0; } }
+</style>
+</head>
+<body>
+<div class="game-wrapper">
+  <div class="net-bar">
+    <span>房间 <b id="netRoom">—</b></span>
+    <span class="dot">·</span>
+    <span id="netMe">我：—</span>
+    <span class="dot">·</span>
+    <span id="netOnline">在线 0</span>
+    <span class="dot">·</span>
+    <span id="netSeat">未入座</span>
+    <button class="mini-btn" id="btnRename">✏️ 改名</button>
+  </div>
+
+  <div class="table-area" id="tableArea">
+    <div class="center-area" id="centerArea"></div>
+  </div>
+
+  <div class="hand-bar" id="handBar"></div>
+
+  <button class="slam-btn hidden" id="slamBtn">👋 拍桌</button>
+
+  <div class="log-panel">
+    <div class="log-text" id="logText"></div>
+    <div class="count-row">
+      <span>人数</span>
+      <select id="countSel">
+        <option value="4">4</option><option value="5">5</option>
+        <option value="6">6</option><option value="7">7</option><option value="8">8</option>
+      </select>
+      <button class="reset-btn" id="resetBtn">🔄 新游戏</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/supabase-config.js"></script>
+<script src="../shared/shared.js"></script>
+<script>
+/* ============================================================================
+   德国蟑螂 · 联机版
+   ---------------------------------------------------------------------------
+   同步模型（照 room.html 已验证的做法，不要再改回「房主选举」）：
+     · 无中心节点：每个客户端每 3 秒重播自己的在线 + 座位 → dg_presence
+     · 座位归属由所有端用同一套确定性规则各自计算（同座位 id 字典序小者赢）
+     · 座位最靠前的人（座位 1，若空则顺延）是唯一结算者，每 2 秒重播公共牌局 dg_game
+     · 私有手牌只由结算者单发给本人 dg_hand（收件人校验 toId）
+     · 操作一律 dg_act 发给结算者；丢掉/晚到都由「周期性重播」自愈
+     · 拍桌 dg_slam 人人可发，不做状态
+   规则沿用 dgzl.html 皇家版：翻开皇冠触发惩罚堆抽牌，抽到皇冠继续抽。
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* ============================ 常量 ============================ */
+  var BUG_TYPES = [
+    { name: '蟑螂', emoji: '🪳', art: '蟑螂' },
+    { name: '臭虫', emoji: '🪲', art: '臭虫' },
+    { name: '蜘蛛', emoji: '🕷️', art: '蜘蛛' },
+    { name: '蛤蟆', emoji: '🐸', art: '蟾蜍' },
+    { name: '蝙蝠', emoji: '🦇', art: '蝙蝠' },
+    { name: '老鼠', emoji: '🐭', art: '老鼠' },
+    { name: '苍蝇', emoji: '🪰', art: '苍蝇' },
+    { name: '蝎子', emoji: '🦂', art: '蝎子' }
+  ];
+  var TYPE_COUNT = BUG_TYPES.length;
+  var NORMAL_PER_TYPE = 8;      // 每种 8 张普通牌
+  var PENALTY_CROWNS = 4;       // 惩罚堆里放 4 张皇冠
+  var CARD_ART_ROOT = 'cards';
+  var CLAIM_CROWN = -1;
+  var SEAT_TIMEOUT = 15000;     // 15 秒没心跳 = 离线
+  var PRESENCE_MS = 3000;       // 在线/座位重播间隔
+  var GAME_MS = 2000;           // 公共牌局重播间隔
+  var MIN_SEATS = 4, MAX_SEATS = 8;
+  var HANDS_RESEND_MIN = 2000;
+
+  /* ============================ DOM ============================ */
+  var tableArea = document.getElementById('tableArea');
+  var centerArea = document.getElementById('centerArea');
+  var handBar = document.getElementById('handBar');
+  var logText = document.getElementById('logText');
+  var netRoomEl = document.getElementById('netRoom');
+  var netMeEl = document.getElementById('netMe');
+  var netOnlineEl = document.getElementById('netOnline');
+  var netSeatEl = document.getElementById('netSeat');
+  var countSel = document.getElementById('countSel');
+  var slamBtn = document.getElementById('slamBtn');
+  var resetBtn = document.getElementById('resetBtn');
+
+  /* ============================ 小工具 ============================ */
+  function clamp(n, a, b) { n = Number(n) || 0; return n < a ? a : (n > b ? b : n); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+  function shuffle(a) {
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function cardImage(typeIndex, variant) {
+    var folder = (BUG_TYPES[typeIndex] || BUG_TYPES[0]).art;
+    var n = String(((Number(variant) || 0) % NORMAL_PER_TYPE) + 1).padStart(2, '0');
+    return CARD_ART_ROOT + '/' + encodeURIComponent(folder) + '/' + encodeURIComponent(folder + '_' + n) + '.webp';
+  }
+  function claimText(idx) {
+    idx = Number(idx);
+    if (idx === CLAIM_CROWN) return '皇冠👑';
+    var b = BUG_TYPES[idx];
+    return b ? (b.emoji + b.name) : '？';
+  }
+
+  /* ============================ 身份 ============================ */
+  var meId = (function () {
+    var v = '';
+    try { v = sessionStorage.getItem('dgzl_me_id') || ''; } catch (e) {}
+    if (!v) {
+      v = 'g_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+      try { sessionStorage.setItem('dgzl_me_id', v); } catch (e) {}
+    }
+    return v;
+  })();
+
+  function lobbyName() {
+    try {
+      var l = JSON.parse(localStorage.getItem('botc_lobby') || 'null');
+      if (l && l.name) return String(l.name).slice(0, 10);
+    } catch (e) {}
+    return '';
+  }
+  var myName = (function () {
+    var v = '';
+    try { v = sessionStorage.getItem('dgzl_me_name') || ''; } catch (e) {}
+    return String(v || lobbyName() || ('玩家' + meId.slice(-4))).slice(0, 10);
+  })();
+  /* 名字钉在这个标签页上：刷新后不会被别处改过的 lobby 名字顶掉 */
+  try { if (!sessionStorage.getItem('dgzl_me_name')) sessionStorage.setItem('dgzl_me_name', myName); } catch (e) {}
+
+  /* 房间号：优先 shared.js 的 getRoomCode()，永远走 #room=xxx（帽子云不吃 ?查询） */
+  var ROOM = (function () {
+    if (typeof getRoomCode === 'function') { try { return getRoomCode(); } catch (e) {} }
+    var h = String(location.hash || '').replace(/^#/, '');
+    if (h.indexOf('room=') === 0) {
+      return decodeURIComponent(h.slice(5)).toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'lobby';
+    }
+    return 'lobby';
+  })();
+
+  /* ============================ 运行时状态 ============================ */
+  var bootAt = Date.now();
+  var ch = null;
+  var online = false;
+  var sid = Math.random().toString(36).slice(2, 8);   // 每次加载都换：刷新 = 新手牌要重发
+
+  var peers = new Map();      // id -> { name, seat, ts }
+  var owners = [];            // 座位 -> {id,name}|null（由所有端用同一规则算出）
+  var authSeat = -1;          // 当前结算者座位（最靠前的在位座位）
+  var mySeat = -1;            // 我实际占住的座位（-1 = 没座位）
+  var playerCount = 4;        // 座位数 4~8
+  var wantSeat = (function () {
+    try {
+      var v = sessionStorage.getItem('dgzl_seat');
+      var n = Number(v);
+      if (v !== null && v !== '' && isFinite(n) && n >= 0 && n < MAX_SEATS) return n;
+    } catch (e) {}
+    return -1;
+  })();
+  function saveSeat() {
+    try { sessionStorage.setItem('dgzl_seat', String(wantSeat)); } catch (e) {}
+  }
+
+  var G = null;               // 牌局（结算者 = 作者；其他人 = 镜像）
+  var myHand = [];            // 只属于我的手牌
+  var myHandRev = -1;
+  var pendingActUntil = 0;    // 本机刚提交操作，先锁按钮防连点
+  var lastHandTo = {};        // 结算者用：座位 -> 上次发手牌的 peer id
+  var ownerSince = {};        // 结算者用：座位 -> {id, ts}，判断新上座的人
+  var lastGameSent = 0;
+  var lastPresenceAt = 0;
+  var lastHandReport = 0;
+  var wasAuthority = false;
+  var authSince = 0;
+  var dragState = null;
+  var slamTimer = null;
+  var pendingRender = null;
+  var logs = [];
+
+  /* ============================ 日志 ============================ */
+  function pushLog(text) {
+    text = String(text || '').trim();
+    if (!text) return;
+    if (logs[0] === text) return;
+    logs.unshift(text);
+    if (logs.length > 6) logs.length = 6;
+    renderLog();
+  }
+  function renderLog() {
+    logText.innerHTML = logs.map(function (t) {
+      return '<div class="log-line">' + esc(t) + '</div>';
+    }).join('');
+  }
+
+  /* ============================ 座位归属（确定性规则） ============================ */
+  function computeOwners(now) {
+    var own = new Array(playerCount);
+    var i;
+    for (i = 0; i < playerCount; i++) own[i] = null;
+    peers.forEach(function (p, id) {
+      if (now - p.ts > SEAT_TIMEOUT) return;          // 超过 15 秒没心跳 → 视为离线
+      var s = Number(p.seat);
+      if (!(s >= 0 && s < playerCount)) return;
+      /* 同一座位多人抢：id 字典序小的人占着（所有端算出来一样） */
+      if (!own[s] || String(id) < String(own[s].id)) own[s] = { id: id, name: p.name };
+    });
+    return own;
+  }
+  function lowestOccupied(own) {
+    for (var i = 0; i < own.length; i++) if (own[i]) return i;
+    return -1;
+  }
+  function ownerIdOf(seat) {
+    return (owners[seat] && owners[seat].id) || '';
+  }
+  /* 座位的「这一份连接」标识：换了 id 或刷新了，都要重新发手牌 */
+  function peerSid(id) {
+    var p = peers.get(id);
+    return (p && p.sid) || '';
+  }
+  function peerTag(seat) {
+    var id = ownerIdOf(seat);
+    return id ? (id + '#' + peerSid(id)) : '';
+  }
+  function nameOf(seat) {
+    var o = owners[seat];
+    if (o && o.name) return o.name;
+    if (G && G.players && G.players[seat] && G.players[seat].name) return G.players[seat].name;
+    return '座位' + (seat + 1);
+  }
+  function amAuthority() {
+    return mySeat >= 0 && mySeat === authSeat && authSeat >= 0;
+  }
+
+  /* 我这一轮应该对外广播的座位：
+     wantSeat 被别人用更小的 id 抢走 → 退成 -1，避免「两个人都坐 1 号位」 */
+  function computeMySeat(now) {
+    if (wantSeat >= 0 && wantSeat < playerCount) {
+      var o = owners[wantSeat];
+      if (!o || o.id === meId) return wantSeat;
+    }
+    return -1;
+  }
+
+  function presenceTick(sendIt) {
+    var now = Date.now();
+    owners = computeOwners(now);
+    var eff = computeMySeat(now);
+
+    /* 没座位就自动找最低空位（A 开房间自动坐 1 号位） */
+    if (eff < 0 && (wantSeat < 0 || now - bootAt > 1500)) {
+      for (var s = 0; s < playerCount; s++) {
+        if (!owners[s]) { eff = s; wantSeat = s; saveSeat(); break; }
+      }
+    }
+
+    if (eff !== mySeat) {
+      mySeat = eff;
+      myHand = [];                 // 换座位 → 旧手牌作废，等结算者重新发
+      myHandRev = -1;
+      pendingActUntil = 0;
+    }
+
+    peers.set(meId, { name: myName, seat: eff, ts: now, sid: sid });
+    lastPresenceAt = now;
+
+    /* 把自己这一票也算进去，再算一遍给显示和权威判定用 */
+    owners = computeOwners(now);
+    authSeat = lowestOccupied(owners);
+
+    if (sendIt && ch) {
+      try { ch.send('dg_presence', { id: meId, name: myName, seat: eff, ts: now, sid: sid }); } catch (e) {}
+    }
+  }
+
+  /* ============================ 通道 ============================ */
+  function send(type, payload) {
+    if (!ch) return;
+    try { ch.send(type, payload); } catch (e) {}
+  }
+
+  function initChannel() {
+    if (typeof openChannel !== 'function') {
+      pushLog('⚠️ 连接模块没加载，检查 shared.js 是否存在');
+      return;
+    }
+    try {
+      ch = openChannel(onMessage);
+    } catch (e) {
+      pushLog('⚠️ 连接失败：' + (e && e.message ? e.message : e));
+    }
+  }
+
+  function onMessage(msg) {
+    if (!msg || !msg.type) return;
+    var p = msg.payload || {};
+    switch (msg.type) {
+      case '__connected__':
+        online = true;
+        lastPresenceAt = 0;
+        presenceTick(true);
+        scheduleRender();
+        break;
+      case 'dg_presence':
+        onPresence(p);
+        break;
+      case 'dg_game':
+        onGame(p);
+        break;
+      case 'dg_hand':
+        onHand(p);
+        break;
+      case 'dg_act':
+        if (amAuthority()) applyAct(p);      // 只有结算者才执行操作
+        break;
+      case 'dg_slam':
+        pushLog('👋 ' + (p.by || '有人') + ' 拍了桌子');
+        slamTable();
+        break;
+      default:
+        break;
+    }
+  }
+
+  function onPresence(p) {
+    if (!p || !p.id || p.id === meId) return;
+    var old = peers.get(p.id);
+    var seat = Number(p.seat);
+    peers.set(p.id, {
+      name: String(p.name || (old && old.name) || '玩家').slice(0, 10),
+      seat: (seat >= 0 && seat < MAX_SEATS) ? seat : -1,
+      sid: String(p.sid || (old && old.sid) || ''),
+      ts: Date.now()
+    });
+    owners = computeOwners(Date.now());
+    var a = lowestOccupied(owners);
+    if (a !== authSeat) authSeat = a;
+    scheduleRender();
+  }
+
+  /* ============================ 牌局：镜像与序列化 ============================ */
+  function sanitizeCard(c) {
+    if (!c || typeof c !== 'object') return null;
+    var t = Number(c.typeIndex);
+    if (!(t >= 0 && t < TYPE_COUNT)) return null;
+    return {
+      uid: String(c.uid || ('x' + Math.random().toString(36).slice(2))).slice(0, 40),
+      typeIndex: t,
+      variant: clamp(c.variant, 0, NORMAL_PER_TYPE - 1),
+      isCrown: !!c.isCrown
+    };
+  }
+  function plainCard(c) {
+    return { uid: c.uid, typeIndex: c.typeIndex, variant: c.variant, isCrown: !!c.isCrown };
+  }
+  function cloneCards(list) {
+    return (list || []).map(function (c) {
+      return { uid: c.uid, typeIndex: c.typeIndex, variant: c.variant, isCrown: !!c.isCrown };
+    });
+  }
+  function faceCard(c) {
+    return {
+      typeIndex: c.typeIndex, variant: c.variant,
+      isCrown: !!c.isCrown, isPenalty: !!c.isPenalty
+    };
+  }
+
+  function serializeGame() {
+    var now = Date.now();
+    return {
+      rev: G.rev,
+      ts: now,
+      hostSeat: authSeat,
+      hostId: meId,
+      count: G.count,
+      turn: G.turn,
+      players: G.players.map(function (p) {
+        return {
+          seat: p.seat,
+          name: nameOf(p.seat),
+          count: p.count,
+          faceUp: p.faceUp.map(faceCard),
+          lost: !!p.lost
+        };
+      }),
+      cardInPlay: G.cardInPlay ? {
+        typeIndex: G.cardInPlay.typeIndex,
+        variant: G.cardInPlay.variant,
+        isCrown: !!G.cardInPlay.isCrown,
+        claimedTypeIndex: G.cardInPlay.claimedTypeIndex,
+        targetSeat: G.cardInPlay.targetSeat,
+        lastPasserSeat: G.cardInPlay.lastPasserSeat,
+        seenBy: G.cardInPlay.seenBy.slice()
+      } : null,
+      penaltyCount: (G.penalty || []).length,
+      over: !!G.over,
+      winner: G.winner || '',
+      log: G.log || '',
+      needHands: missingHandSeats()
+    };
+  }
+
+  /* 结算者手上没有这些座位的手牌数据（换权威后会发生）→ 让本人上报 */
+  function missingHandSeats() {
+    if (!G) return [];
+    var out = [];
+    for (var s = 0; s < G.count; s++) {
+      if (!ownerIdOf(s)) continue;
+      if (!G.hands || !Array.isArray(G.hands[s])) out.push(s);
+    }
+    return out;
+  }
+
+  var lastAppliedLog = '';
+
+  function shouldApply(p) {
+    var rev = Number(p.rev) || 0;
+    if (!G) return true;
+    var hSeat = Number(p.hostSeat);
+    var hId = String(p.hostId || '');
+    var authId = ownerIdOf(authSeat);
+    /* 当前结算者发来的：版本号不落后就认（它才是权威） */
+    if (hId && authId && hId === authId && rev >= G.rev) return true;
+    /* 自称结算者、但那个座位根本不是它（抢座位失败的旧权威）→ 丢掉 */
+    var seatId = ownerIdOf(hSeat);
+    if (hId && seatId && hId !== seatId) return false;
+    /* 其他情况只认版本更高的 */
+    return rev > G.rev;
+  }
+
+  function onGame(p) {
+    if (!p || !Array.isArray(p.players)) return;
+    var prevRev = G ? G.rev : -1;
+    if (!shouldApply(p)) return;
+
+    var prevPenalty = G ? totalPenalty(G) : -1;
+    var g = {
+      rev: Number(p.rev) || 0,
+      hostSeat: Number(p.hostSeat) || 0,
+      count: clamp(p.count, MIN_SEATS, MAX_SEATS),
+      turn: clamp(p.turn, 0, MAX_SEATS - 1),
+      players: p.players.map(function (x) {
+        return {
+          seat: clamp(x.seat, 0, MAX_SEATS - 1),
+          name: String(x.name || ''),
+          count: Math.max(0, Number(x.count) || 0),
+          faceUp: (x.faceUp || []).map(function (c) {
+            return {
+              typeIndex: clamp(c.typeIndex, 0, TYPE_COUNT - 1),
+              variant: clamp(c.variant, 0, NORMAL_PER_TYPE - 1),
+              isCrown: !!c.isCrown,
+              isPenalty: !!c.isPenalty
+            };
+          }),
+          lost: !!x.lost
+        };
+      }),
+      cardInPlay: null,
+      penaltyCount: Math.max(0, Number(p.penaltyCount) || 0),
+      over: !!p.over,
+      winner: String(p.winner || ''),
+      log: String(p.log || ''),
+      hands: null          // 镜像端不保存手牌，只有自己那一份
+    };
+
+    if (p.cardInPlay && typeof p.cardInPlay === 'object') {
+      var c = p.cardInPlay;
+      g.cardInPlay = {
+        typeIndex: clamp(c.typeIndex, 0, TYPE_COUNT - 1),
+        variant: clamp(c.variant, 0, NORMAL_PER_TYPE - 1),
+        isCrown: !!c.isCrown,
+        claimedTypeIndex: Number(c.claimedTypeIndex),
+        targetSeat: clamp(c.targetSeat, 0, MAX_SEATS - 1),
+        lastPasserSeat: clamp(c.lastPasserSeat, 0, MAX_SEATS - 1),
+        seenBy: (c.seenBy || []).map(function (x) { return clamp(x, 0, MAX_SEATS - 1); })
+      };
+    }
+
+    G = g;
+    playerCount = clamp(g.count, MIN_SEATS, MAX_SEATS);
+    if (mySeat >= playerCount) mySeat = -1;
+
+    if (g.log && g.log !== lastAppliedLog) {
+      lastAppliedLog = g.log;
+      pushLog(g.log);
+    }
+    if (prevRev >= 0 && g.rev > prevRev) pendingActUntil = 0;
+
+    /* 惩罚堆变短 = 有人抽了牌 → 大家都能拍桌 */
+    var nowPenalty = totalPenalty(g);
+    if (prevPenalty >= 0 && nowPenalty > prevPenalty) showSlamButton();
+
+    /* 结算者换了、手上没有我的手牌 → 主动上报，让它继续能结算 */
+    var nh = Array.isArray(p.needHands) ? p.needHands : [];
+    if (mySeat >= 0 && nh.indexOf(mySeat) >= 0 && myHand.length &&
+        Date.now() - lastHandReport > HANDS_RESEND_MIN) {
+      lastHandReport = Date.now();
+      send('dg_act', { kind: 'hand', id: meId, seat: mySeat, hand: myHand.map(plainCard) });
+    }
+
+    scheduleRender();
+  }
+
+  function totalPenalty(g) {
+    if (!g || !g.players) return 0;
+    var n = 0;
+    g.players.forEach(function (p) {
+      (p.faceUp || []).forEach(function (c) { if (c.isPenalty) n++; });
+    });
+    return n;
+  }
+
+  function onHand(p) {
+    if (!p || p.toId !== meId) return;                    // 只收发给自己的
+    var seat = Number(p.seat);
+    if (mySeat >= 0 && seat !== mySeat) return;           // 座位已经变了，旧包丢弃
+    var rev = Number(p.rev) || 0;
+    if (rev < myHandRev) return;
+    myHand = (Array.isArray(p.hand) ? p.hand : []).map(sanitizeCard).filter(Boolean);
+    myHandRev = rev;
+    pendingActUntil = 0;
+    scheduleRender();
+  }
+
+  function broadcastGame() {
+    if (!amAuthority() || !G) return;
+    lastGameSent = Date.now();
+    send('dg_game', serializeGame());
+  }
+
+  function setGameLog(text) {
+    if (G) G.log = text;
+    pushLog(text);
+  }
+
+  /* ============================ 牌局：结算者逻辑 ============================ */
+  var uidSeq = 0;
+  function newUid() {
+    uidSeq++;
+    return meId + '-' + uidSeq.toString(36) + '-' + Math.random().toString(36).slice(2, 5);
+  }
+
+  function buildDeck() {
+    var out = [];
+    for (var t = 0; t < TYPE_COUNT; t++) {
+      for (var v = 0; v < NORMAL_PER_TYPE; v++) {
+        out.push({ uid: newUid(), typeIndex: t, variant: v, isCrown: false, isPenalty: false });
+      }
+      out.push({ uid: newUid(), typeIndex: t, variant: 0, isCrown: true, isPenalty: false });
+    }
+    return out;
+  }
+
+  function buildPenaltyDeck() {
+    var out = [];
+    for (var t = 0; t < TYPE_COUNT; t++) {
+      out.push({ uid: newUid(), typeIndex: t, variant: 0, isCrown: false, isPenalty: true });
+    }
+    shuffle(out);
+    for (var i = 0; i < PENALTY_CROWNS && i < out.length; i++) out[i].isCrown = true;
+    shuffle(out);
+    return out;
+  }
+
+  function firstOccupiedSeat() {
+    for (var s = 0; s < playerCount; s++) if (owners[s]) return s;
+    return 0;
+  }
+
+  function authorityNewGame() {
+    var n = clamp(playerCount, MIN_SEATS, MAX_SEATS);
+    var oldRev = G ? G.rev : 0;
+    var deck = shuffle(buildDeck());
+    var hands = {};
+    var pls = [];
+    var s;
+
+    for (s = 0; s < n; s++) {
+      pls.push({
+        seat: s,
+        name: nameOf(s),
+        count: 0,
+        faceUp: [],
+        lost: false
+      });
+    }
+
+    var base = Math.floor(deck.length / n);
+    var rem = deck.length % n;
+    var ci = 0;
+    for (s = 0; s < n; s++) {
+      var k = base + (s < rem ? 1 : 0);
+      hands[s] = deck.slice(ci, ci + k);
+      ci += k;
+      pls[s].count = k;
+    }
+
+    G = {
+      rev: oldRev + 1,
+      hostSeat: authSeat,
+      count: n,
+      turn: firstOccupiedSeat(),
+      players: pls,
+      hands: hands,
+      cardInPlay: null,
+      penalty: buildPenaltyDeck(),
+      penaltyCount: 0,
+      over: false,
+      winner: '',
+      log: ''
+    };
+    playerCount = n;
+
+    lastHandTo = {};
+    sendHandsToAll();
+    setGameLog('🪳 新的一局：' + n + ' 人，' + nameOf(G.turn) + '（座位 ' + (G.turn + 1) + '）先出牌。翻开皇冠会触发惩罚堆，抽到皇冠继续抽。');
+    broadcastGame();
+    scheduleRender();
+  }
+
+  function sendHandTo(seat, force) {
+    if (!G) return;
+    var tag = peerTag(seat);
+    var hand = (G.hands && G.hands[seat]) || null;
+    if (!tag || !hand) return;
+    var id = ownerIdOf(seat);
+    if (id === meId) {
+      if (force || myHandRev !== G.rev) {
+        myHand = cloneCards(hand);
+        myHandRev = G.rev;
+      }
+      lastHandTo[seat] = tag;
+      return;
+    }
+    if (!force && lastHandTo[seat] === tag) return;
+    send('dg_hand', { toId: id, seat: seat, hand: cloneCards(hand), rev: G.rev });
+    lastHandTo[seat] = tag;
+  }
+
+  function sendHandsToAll() {
+    if (!G) return;
+    for (var s = 0; s < G.count; s++) sendHandTo(s, true);
+  }
+
+  function drawPenalty(seat) {
+    var drawn = [];
+    if (!G.penalty) return drawn;
+    while (G.penalty.length) {
+      var c = G.penalty.pop();
+      G.players[seat].faceUp.push(faceCard(c));
+      drawn.push(c);
+      if (!c.isCrown) break;          // 抽到皇冠继续抽
+    }
+    return drawn;
+  }
+
+  function checkLost(seat) {
+    var counts = {};
+    var list = G.players[seat].faceUp;
+    for (var i = 0; i < list.length; i++) {
+      var t = list[i].typeIndex;
+      counts[t] = (counts[t] || 0) + 1;
+      if (counts[t] >= 4) return true;   // 面前集齐 4 张相同虫子
+    }
+    return false;
+  }
+
+  function applyAct(p) {
+    if (!G || !p || !p.kind) return;
+    if (p.kind === 'restart') {
+      if (Number(p.seat) === authSeat) authorityNewGame();
+      return;
+    }
+
+    var seat = Number(p.seat);
+    if (!(seat >= 0 && seat < G.count)) return;
+
+    /* 换权威后结算者没有手牌数据，由本人上报补回 */
+    if (p.kind === 'hand') {
+      if (!G.hands) G.hands = {};
+      if (Array.isArray(G.hands[seat]) && G.hands[seat].length) return;   // 已经有，不覆盖
+      var hand = (Array.isArray(p.hand) ? p.hand : []).map(sanitizeCard).filter(Boolean);
+      if (hand.length > 40) hand.length = 40;
+      G.hands[seat] = hand;
+      G.players[seat].count = hand.length;
+      G.rev++;
+      sendHandTo(seat, true);
+      broadcastGame();
+      scheduleRender();
+      return;
+    }
+
+    if (G.over) return;
+
+    if (p.kind === 'play') {
+      if (G.cardInPlay) return;
+      if (seat !== G.turn) return;                                  // 只轮到自己才能出牌
+      var target = Number(p.targetSeat);
+      if (!(target >= 0 && target < G.count) || target === seat) return;
+
+      var card = sanitizeCard(p.card);
+      if (!card) return;
+
+      if (G.hands && Array.isArray(G.hands[seat])) {
+        var idx = -1;
+        for (var i = 0; i < G.hands[seat].length; i++) {
+          if (G.hands[seat][i].uid === card.uid) { idx = i; break; }
+        }
+        if (idx < 0) { sendHandTo(seat, true); return; }            // 不同步 → 补发手牌
+        card = G.hands[seat][idx];                                  // 以结算者手里的数据为准
+        G.hands[seat].splice(idx, 1);
+        G.players[seat].count = G.hands[seat].length;
+      } else {
+        G.players[seat].count = Math.max(0, G.players[seat].count - 1);
+      }
+
+      G.rev++;
+      G.cardInPlay = {
+        typeIndex: card.typeIndex,
+        variant: card.variant,
+        isCrown: !!card.isCrown,
+        claimedTypeIndex: (Number(p.claim) === CLAIM_CROWN) ? CLAIM_CROWN : clamp(p.claim, 0, TYPE_COUNT - 1),
+        targetSeat: target,
+        lastPasserSeat: seat,
+        seenBy: [seat]
+      };
+      setGameLog('🎴 ' + nameOf(seat) + ' 把一张牌传给 ' + nameOf(target) + '，宣称是「' + claimText(G.cardInPlay.claimedTypeIndex) + '」');
+      sendHandTo(seat, true);
+      broadcastGame();
+      pendingActUntil = 0;
+      scheduleRender();
+      return;
+    }
+
+    if (p.kind === 'pass') {
+      var cur = G.cardInPlay;
+      if (!cur) return;
+      if (seat !== cur.targetSeat) return;                          // 只有被传牌的人能传下去
+      var nt = Number(p.targetSeat);
+      if (!(nt >= 0 && nt < G.count)) return;
+      if (nt === cur.targetSeat) return;
+      if (cur.seenBy.indexOf(nt) >= 0) return;                      // 看过这张牌的人不能再被传
+
+      G.rev++;
+      cur.seenBy.push(cur.targetSeat);
+      cur.lastPasserSeat = cur.targetSeat;
+      cur.targetSeat = nt;
+      cur.claimedTypeIndex = (Number(p.claim) === CLAIM_CROWN) ? CLAIM_CROWN : clamp(p.claim, 0, TYPE_COUNT - 1);
+      setGameLog('↗ ' + nameOf(seat) + ' 传给 ' + nameOf(nt) + '，宣称是「' + claimText(cur.claimedTypeIndex) + '」');
+      broadcastGame();
+      pendingActUntil = 0;
+      scheduleRender();
+      return;
+    }
+
+    if (p.kind === 'accept') {
+      var c = G.cardInPlay;
+      if (!c) return;
+      if (seat !== c.targetSeat) return;
+      resolveAccept(!!p.believe);
+      return;
+    }
+  }
+
+  function resolveAccept(believe) {
+    var c = G.cardInPlay;
+    if (!c) return;
+    var claim = Number(c.claimedTypeIndex);
+    var truth = (claim === CLAIM_CROWN) ? !!c.isCrown : (claim === Number(c.typeIndex));
+    var correct = (!!believe === truth);
+
+    var receiverSeat = correct ? c.lastPasserSeat : c.targetSeat;
+    var actorName = nameOf(c.targetSeat);
+    var receiverName = nameOf(receiverSeat);
+
+    G.rev++;
+    G.cardInPlay = null;
+    G.players[receiverSeat].faceUp.push({
+      typeIndex: c.typeIndex,
+      variant: c.variant,
+      isCrown: !!c.isCrown,
+      isPenalty: false
+    });
+
+    var line = actorName + (believe ? ' 相信' : ' 质疑') +
+      ' → 其实是 ' + claimText(c.typeIndex) + (c.isCrown ? '👑' : '') +
+      '，判断' + (correct ? '正确 ✓' : '错误 ✗') + '，' + receiverName + ' 收下这张牌';
+
+    if (c.isCrown) {
+      var drawn = drawPenalty(receiverSeat);
+      if (drawn.length) {
+        line += '。👑 皇冠触发惩罚，' + receiverName + ' 抽到：' +
+          drawn.map(function (x) { return claimText(x.typeIndex) + (x.isCrown ? '👑' : ''); }).join('、');
+      } else {
+        line += '。👑 皇冠触发，但惩罚堆已空';
+      }
+      showSlamButton();
+    }
+
+    G.turn = receiverSeat;
+
+    if (checkLost(receiverSeat)) {
+      G.over = true;
+      G.winner = '🏁 ' + receiverName + ' 面前集齐 4 张相同的虫子，输了！';
+    } else if (G.players[receiverSeat].count === 0) {
+      G.over = true;
+      G.winner = '🏁 ' + receiverName + ' 没有手牌了，输了！';
+    }
+
+    setGameLog(line + '。' + (G.over ? G.winner : '轮到 ' + receiverName + ' 出牌。'));
+    broadcastGame();
+    pendingActUntil = 0;
+    scheduleRender();
+  }
+
+  /* ============================ 结算者心跳 ============================ */
+  function authTick(now) {
+    if (!amAuthority()) return;
+
+    if (!G) {
+      if (now - authSince > 3500) {
+        authorityNewGame();
+        lastGameSent = Date.now();
+      }
+      return;
+    }
+
+    /* 换权威之后自己那一份手牌只有自己知道 → 先补进结算数据 */
+    if (mySeat >= 0 && myHand.length) {
+      if (!G.hands) G.hands = {};
+      if (!Array.isArray(G.hands[mySeat])) {
+        G.hands[mySeat] = cloneCards(myHand);
+        G.players[mySeat].count = myHand.length;
+        G.rev++;
+      }
+    }
+
+    /* 有人刚坐下 / 刷新换了 id → 把手牌补给他 */
+    for (var s = 0; s < G.count; s++) {
+      var tag = peerTag(s);
+      if (!tag) { lastHandTo[s] = ''; ownerSince[s] = null; continue; }
+      if (!ownerSince[s] || ownerSince[s].tag !== tag) ownerSince[s] = { tag: tag, ts: now };
+      if (lastHandTo[s] !== tag && G.hands && Array.isArray(G.hands[s])) sendHandTo(s, true);
+      /* 座位有人、但结算数据里没有他的手牌（换权威后新上座）→ 5 秒后重新发牌兜底 */
+      if (!(G.hands && Array.isArray(G.hands[s])) && now - ownerSince[s].ts > 5000) {
+        authorityNewGame();
+        return;
+      }
+    }
+    /* 自己的手牌跟结算数据对齐 */
+    if (G.hands && Array.isArray(G.hands[mySeat]) && myHandRev !== G.rev) {
+      myHand = cloneCards(G.hands[mySeat]);
+      myHandRev = G.rev;
+    }
+
+    if (now - lastGameSent >= GAME_MS) broadcastGame();
+  }
+
+  /* ============================ 渲染 ============================ */
+  function scheduleRender() {
+    if (pendingRender) return;
+    pendingRender = setTimeout(function () {
+      pendingRender = null;
+      renderAll();
+    }, 40);
+  }
+
+  var seatSig = '';
+  var centerSig = '';
+  var handSig = '';
+
+  function renderAll() {
+    renderBar();
+    renderSeats();
+    renderCenter();
+    renderHand();
+    syncControls();
+  }
+
+  function renderBar() {
+    netRoomEl.textContent = ROOM;
+    netMeEl.textContent = '我：' + myName;
+    var n = 0;
+    var now = Date.now();
+    peers.forEach(function (p) { if (now - p.ts <= SEAT_TIMEOUT) n++; });
+    netOnlineEl.textContent = '在线 ' + n + (online ? '' : '（连接中…）');
+    netSeatEl.textContent = mySeat >= 0
+      ? ('座位 ' + (mySeat + 1) + (amAuthority() ? ' · 主持' : ''))
+      : '未入座';
+  }
+
+  function seatBadges(p) {
+    if (!p) return '<span class="seat-empty">—</span>';
+    var info = {};
+    p.faceUp.forEach(function (c) {
+      var t = c.typeIndex;
+      if (!info[t]) info[t] = { count: 0, crown: false, penalty: false, variant: c.variant || 0, penaltyOnly: true };
+      info[t].count++;
+      if (c.isCrown) info[t].crown = true;
+      if (c.isPenalty) info[t].penalty = true;
+      if (!c.isPenalty) info[t].penaltyOnly = false;
+    });
+    var out = '';
+    Object.keys(info).forEach(function (t) {
+      var b = BUG_TYPES[t], d = info[t];
+      if (!b) return;
+      var cls = 'face-badge';
+      if (d.crown) cls += ' crown';
+      else if (d.penalty) cls += ' penalty';
+      var mark = d.crown ? '👑' : (d.penalty ? '罚' : '');
+      out += '<span class="' + cls + '"><img src="' + cardImage(t, d.variant) + '" alt="' + esc(b.name) + '">×' + d.count + mark + '</span>';
+    });
+    return out || '<span class="seat-empty">—</span>';
+  }
+
+  function positionSeat(el, idx, total) {
+    var ang = -Math.PI / 2 + idx * (2 * Math.PI / total);
+    var r = total >= 7 ? 36 : (total >= 5 ? 38 : 37);
+    el.style.left = (50 + Math.cos(ang) * r).toFixed(2) + '%';
+    el.style.top = (50 + Math.sin(ang) * r).toFixed(2) + '%';
+    el.style.width = (total >= 8 ? '17%' : total >= 7 ? '18%' : total >= 6 ? '20%' : '23%');
+    el.style.minWidth = (total >= 7 ? '76px' : '88px');
+  }
+
+  function renderSeats() {
+    var parts = [];
+    var i;
+    for (i = 0; i < playerCount; i++) {
+      var o = owners[i];
+      var p = (G && G.players) ? G.players[i] : null;
+      parts.push([
+        i,
+        o ? o.id : '',
+        o ? o.name : '',
+        p ? p.count : -1,
+        p ? p.faceUp.map(function (c) { return c.typeIndex + (c.isCrown ? 'C' : '') + (c.isPenalty ? 'P' : ''); }).join(',') : '',
+        mySeat === i ? 1 : 0,
+        (G && !G.over && !G.cardInPlay && G.turn === i) ? 1 : 0,
+        (G && !G.over && G.cardInPlay && G.cardInPlay.targetSeat === i) ? 1 : 0
+      ].join('|'));
+    }
+    var sig = playerCount + '#' + parts.join('#');
+    if (sig === seatSig) return;
+    seatSig = sig;
+
+    Array.prototype.slice.call(tableArea.querySelectorAll('.seat')).forEach(function (el) { el.remove(); });
+
+    for (i = 0; i < playerCount; i++) {
+      var owner = owners[i];
+      var pl = (G && G.players) ? G.players[i] : null;
+      var mine = owner && owner.id === meId;
+      var el = document.createElement('div');
+      el.dataset.seat = String(i);
+      el.className = 'seat' + (owner ? '' : ' free') + (mine ? ' you' : '');
+      if (G && !G.over && !G.cardInPlay && G.turn === i) el.classList.add('active');
+      if (G && !G.over && G.cardInPlay && G.cardInPlay.targetSeat === i) el.classList.add('targetable');
+      positionSeat(el, i, playerCount);
+
+      var name = owner ? owner.name : '空位 · 点击入座';
+      var html = '<div class="seat-name">' + esc(name) + (mine ? '<span class="seat-you-badge">我</span>' : '') + '</div>';
+      if (pl) {
+        html += '<div class="seat-hand-count">手牌 ' + pl.count + '</div>';
+      }
+      html += '<div class="seat-face-up' + (pl && !pl.faceUp.length ? ' empty-badges' : '') + '">' + seatBadges(pl) + '</div>';
+      el.innerHTML = html;
+
+      if (!owner) {
+        (function (seatNo) {
+          el.addEventListener('click', function () { claimSeat(seatNo); });
+        })(i);
+      }
+      tableArea.appendChild(el);
+    }
+  }
+
+  function claimSeat(i) {
+    if (i < 0 || i >= playerCount) return;
+    if (owners[i] && owners[i].id !== meId) return;
+    wantSeat = i;
+    saveSeat();
+    presenceTick(true);
+    scheduleRender();
+    pushLog('已选 ' + (i + 1) + ' 号位，等对方同步…');
+  }
+
+  function canIRespond() {
+    return !!G && !G.over && !!G.cardInPlay && mySeat >= 0 &&
+      mySeat === G.cardInPlay.targetSeat && Date.now() > pendingActUntil;
+  }
+  function canIPlay() {
+    return !!G && !G.over && !G.cardInPlay && mySeat >= 0 &&
+      mySeat === G.turn && myHand.length > 0 && Date.now() > pendingActUntil;
+  }
+  function canIPass() {
+    return canIRespond() && validPassTargets().length > 0;
+  }
+  function validPassTargets() {
+    if (!G || !G.cardInPlay) return [];
+    var out = [];
+    var cur = G.cardInPlay.targetSeat;
+    var seen = G.cardInPlay.seenBy || [];
+    for (var s = 0; s < G.count; s++) {
+      if (s === cur) continue;
+      if (seen.indexOf(s) >= 0) continue;
+      if (!ownerIdOf(s)) continue;
+      out.push(s);
+    }
+    return out;
+  }
+
+  function renderCenter() {
+    var pendingNow = Date.now() < pendingActUntil ? 1 : 0;
+    var sig = [
+      G ? G.rev : -1,
+      G ? G.hostSeat : -1,
+      G && G.over ? 1 : 0,
+      G && G.cardInPlay ? [G.cardInPlay.targetSeat, G.cardInPlay.claimedTypeIndex, (G.cardInPlay.seenBy || []).join('.')].join(',') : '',
+      canIRespond() ? 1 : 0,
+      validPassTargets().join('.'),
+      G ? G.penaltyCount : 0,
+      pendingNow,
+      mySeat,
+      G ? G.turn : -1,
+      playerCount,
+      document.querySelectorAll('.seat').length
+    ].join('|');
+    if (sig === centerSig) return;
+    centerSig = sig;
+
+    centerArea.innerHTML = '';
+
+    if (!G) {
+      centerArea.appendChild(placeholder(amAuthority() ? '正在发牌…' : '等待座位 1 发牌…'));
+      return;
+    }
+
+    if (G.over) {
+      var banner = document.createElement('div');
+      banner.className = 'game-over-banner';
+      banner.textContent = G.winner || '游戏结束';
+      centerArea.appendChild(banner);
+      appendPenaltyInfo();
+      return;
+    }
+
+    if (G.cardInPlay) {
+      var c = G.cardInPlay;
+      var cardEl = document.createElement('div');
+      cardEl.className = 'center-card card-back';
+      cardEl.id = 'centerCard';
+      cardEl.textContent = '?';
+      if (canIPass()) cardEl.classList.add('draggable');
+      centerArea.appendChild(cardEl);
+
+      var claimEl = document.createElement('div');
+      claimEl.className = 'center-claim';
+      claimEl.textContent = '→ ' + nameOf(c.targetSeat) + ' · 宣称「' + claimText(c.claimedTypeIndex) + '」';
+      centerArea.appendChild(claimEl);
+
+      if (canIRespond()) {
+        if (canIPass()) {
+          var passBtn = document.createElement('button');
+          passBtn.className = 'pass-btn';
+          passBtn.textContent = '↗ 传给别人';
+          passBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            showPassTargetModal();
+          });
+          centerArea.appendChild(passBtn);
+        }
+        var actions = document.createElement('div');
+        actions.className = 'pass-actions';
+        var okBtn = document.createElement('button');
+        okBtn.className = 'believe-btn';
+        okBtn.textContent = '✅ 相信';
+        okBtn.addEventListener('click', function (e) { e.stopPropagation(); doAccept(true); });
+        var noBtn = document.createElement('button');
+        noBtn.className = 'doubt-btn';
+        noBtn.textContent = '❌ 质疑';
+        noBtn.addEventListener('click', function (e) { e.stopPropagation(); doAccept(false); });
+        actions.appendChild(okBtn);
+        actions.appendChild(noBtn);
+        centerArea.appendChild(actions);
+      } else {
+        var wait = placeholder('⏳ 等待 ' + nameOf(c.targetSeat) + ' 决定：相信 / 质疑 / 传给别人');
+        centerArea.appendChild(wait);
+      }
+      appendPenaltyInfo();
+      return;
+    }
+
+    if (pendingNow) {
+      centerArea.appendChild(placeholder('已提交，等同步…'));
+    } else if (mySeat < 0) {
+      centerArea.appendChild(placeholder('点牌桌上的空位入座'));
+    } else if (mySeat === G.turn) {
+      centerArea.appendChild(placeholder('轮到你出牌：把一张手牌拖到某个座位'));
+    } else {
+      centerArea.appendChild(placeholder('等待 ' + nameOf(G.turn) + ' 出牌'));
+    }
+    appendPenaltyInfo();
+
+    function appendPenaltyInfo() {
+      var info = document.createElement('div');
+      info.className = 'penalty-stack-info';
+      info.textContent = '🃏 惩罚堆 ' + (G ? G.penaltyCount : 0) + ' 张';
+      centerArea.appendChild(info);
+    }
+  }
+
+  function placeholder(text) {
+    var el = document.createElement('div');
+    el.className = 'center-placeholder';
+    el.textContent = text;
+    return el;
+  }
+
+  function renderHand() {
+    if (dragState) return;
+
+    var sig = [
+      myHand.map(function (c) { return c.uid + ':' + (c.isCrown ? 'C' : ''); }).join(','),
+      canIPlay() ? 1 : 0,
+      G ? G.over ? 1 : 0 : 0,
+      G && G.cardInPlay ? G.cardInPlay.targetSeat : -1,
+      mySeat,
+      G ? G.turn : -1,
+      playerCount
+    ].join('|');
+    if (sig === handSig) return;
+    handSig = sig;
+
+    handBar.innerHTML = '';
+
+    if (!G) {
+      handBar.appendChild(handHint(amAuthority() ? '正在发牌…' : '等待座位 1 发牌…'));
+      return;
+    }
+    if (G.over) {
+      handBar.appendChild(handHint('🏁 ' + (G.winner || '游戏结束')));
+      return;
+    }
+    if (mySeat < 0) {
+      handBar.appendChild(handHint('还没有座位：点牌桌上写着「空位」的位置入座'));
+      return;
+    }
+
+    if (G.cardInPlay) {
+      handBar.appendChild(handHint(mySeat === G.cardInPlay.targetSeat
+        ? '有人传给你一张牌，宣称「' + claimText(G.cardInPlay.claimedTypeIndex) + '」：相信 / 质疑，或传给下一个人'
+        : '等待 ' + nameOf(G.cardInPlay.targetSeat) + ' 做决定…（本局只有这一张牌在传）'));
+    } else if (mySeat === G.turn) {
+      handBar.appendChild(handHint('轮到你：把手牌拖到某个座位，再选你宣称它是哪种虫'));
+    } else {
+      handBar.appendChild(handHint('等待 ' + nameOf(G.turn) + ' 出牌；下面是你的手牌（' + myHand.length + ' 张）'));
+    }
+
+    if (!myHand.length) {
+      handBar.appendChild(handHint('没有手牌'));
+      return;
+    }
+
+    /* 按种类分组，皇冠排在组首（跟单机版一致） */
+    var groups = {};
+    var order = [];
+    myHand.forEach(function (card, idx) {
+      var t = card.typeIndex;
+      if (!groups[t]) { groups[t] = { crowns: [], normals: [] }; order.push(t); }
+      if (card.isCrown) groups[t].crowns.push(idx);
+      else groups[t].normals.push(idx);
+    });
+    order.sort(function (a, b) { return a - b; });
+
+    order.forEach(function (typeIndex) {
+      var g = groups[typeIndex];
+      var groupEl = document.createElement('div');
+      groupEl.className = 'hand-group';
+      g.crowns.concat(g.normals).forEach(function (idx) {
+        groupEl.appendChild(createHandCard(myHand[idx], idx));
+      });
+      handBar.appendChild(groupEl);
+    });
+  }
+
+  function handHint(text) {
+    var el = document.createElement('div');
+    el.className = 'hand-hint';
+    el.textContent = text;
+    return el;
+  }
+
+  function createHandCard(card, cardIndex) {
+    var bug = BUG_TYPES[card.typeIndex] || BUG_TYPES[0];
+    var el = document.createElement('div');
+    el.className = 'hand-card' + (card.isCrown ? ' crown-card' : '');
+    el.dataset.cardIndex = String(cardIndex);
+    el.dataset.cardUid = card.uid;
+    el.innerHTML =
+      '<img class="card-art" src="' + cardImage(card.typeIndex, card.variant) + '" alt="' + esc(bug.name) + '" draggable="false">' +
+      '<div class="card-name">' + esc(bug.name) + '</div>';
+    return el;
+  }
+
+  function syncControls() {
+    if (document.activeElement !== countSel) countSel.value = String(playerCount);
+    countSel.disabled = !amAuthority();
+    resetBtn.disabled = !amAuthority();
+    countSel.title = amAuthority() ? '你是结算者，可以改人数（会重新发牌）' : '人数由座位 1 的人设置';
+    resetBtn.title = amAuthority() ? '重新发牌' : '只有座位 1 的人能开新局';
+  }
+
+  /* ============================ 拖拽 ============================ */
+  function getSeatAt(x, y) {
+    var seats = tableArea.querySelectorAll('.seat');
+    for (var i = 0; i < seats.length; i++) {
+      var r = seats[i].getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return seats[i];
+    }
+    return null;
+  }
+
+  function isValidDropTarget(seat) {
+    if (!G || G.over) return false;
+    if (!(seat >= 0 && seat < playerCount)) return false;
+    if (!ownerIdOf(seat)) return false;                 // 空位不能收牌
+    if (!G.cardInPlay) return seat !== mySeat && canIPlay();
+    return canIRespond() && validPassTargets().indexOf(seat) >= 0;
+  }
+
+  function startDrag(e, sourceEl, sourceType, cardIndex) {
+    if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
+    e.preventDefault();
+    var rect = sourceEl.getBoundingClientRect();
+    var clone = sourceEl.cloneNode(true);
+    clone.classList.add('drag-clone');
+    clone.style.left = rect.left + 'px';
+    clone.style.top = rect.top + 'px';
+    clone.style.width = rect.width + 'px';
+    clone.style.height = rect.height + 'px';
+    document.body.appendChild(clone);
+    sourceEl.style.opacity = '0.3';
+
+    dragState = {
+      sourceType: sourceType,
+      cardIndex: cardIndex,
+      clone: clone,
+      sourceEl: sourceEl,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top
+    };
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup', onDragEnd);
+    document.addEventListener('pointercancel', onDragEnd);
+  }
+
+  function onDragMove(e) {
+    if (!dragState) return;
+    dragState.clone.style.left = (e.clientX - dragState.offsetX) + 'px';
+    dragState.clone.style.top = (e.clientY - dragState.offsetY) + 'px';
+    var seats = tableArea.querySelectorAll('.seat');
+    for (var i = 0; i < seats.length; i++) seats[i].classList.remove('drop-highlight');
+    var seat = getSeatAt(e.clientX, e.clientY);
+    if (seat && isValidDropTarget(parseInt(seat.dataset.seat, 10))) seat.classList.add('drop-highlight');
+  }
+
+  function onDragEnd(e) {
+    if (!dragState) return;
+    var st = dragState;
+    dragState = null;
+
+    st.clone.remove();
+    if (st.sourceEl.style) st.sourceEl.style.opacity = '';
+    var seats = tableArea.querySelectorAll('.seat');
+    for (var i = 0; i < seats.length; i++) seats[i].classList.remove('drop-highlight');
+
+    document.removeEventListener('pointermove', onDragMove);
+    document.removeEventListener('pointerup', onDragEnd);
+    document.removeEventListener('pointercancel', onDragEnd);
+
+    var seatEl = getSeatAt(e.clientX, e.clientY);
+    var targetSeat = seatEl ? parseInt(seatEl.dataset.seat, 10) : -1;
+
+    handSig = '';
+    renderHand();
+
+    if (targetSeat >= 0 && isValidDropTarget(targetSeat)) {
+      if (st.sourceType === 'hand') {
+        showClaimModal(function (claim) { doPlay(st.cardIndex, targetSeat, claim); });
+      } else {
+        showClaimModal(function (claim) { doPass(targetSeat, claim); });
+      }
+      return;
+    }
+    renderCenter();
+  }
+
+  document.addEventListener('pointerdown', function (e) {
+    if (dragState || !G || G.over) return;
+    if (e.target.closest && e.target.closest('.modal-overlay')) return;
+
+    var handCard = e.target.closest ? e.target.closest('.hand-card') : null;
+    if (handCard && canIPlay()) {
+      startDrag(e, handCard, 'hand', parseInt(handCard.dataset.cardIndex, 10));
+      return;
+    }
+    var centerCard = e.target.closest ? e.target.closest('#centerCard.draggable') : null;
+    if (centerCard && canIPass()) {
+      startDrag(e, centerCard, 'center', -1);
+    }
+  });
+
+  /* ============================ 声明弹窗 ============================ */
+  function showClaimModal(onSelect) {
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    var modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = '<h3>这张牌是…</h3><div class="bug-grid"></div>';
+    var grid = modal.querySelector('.bug-grid');
+
+    BUG_TYPES.forEach(function (b, i) {
+      var btn = document.createElement('button');
+      btn.className = 'bug-option';
+      btn.innerHTML = '<img class="bug-thumb" src="' + cardImage(i, 0) + '" alt="' + esc(b.name) + '">' +
+        '<span class="bug-label">' + b.emoji + esc(b.name) + '</span>';
+      btn.addEventListener('click', function () { overlay.remove(); onSelect(i); });
+      grid.appendChild(btn);
+    });
+
+    var crownBtn = document.createElement('button');
+    crownBtn.className = 'bug-option crown-option';
+    crownBtn.innerHTML = '<span style="font-size:1.5rem;">👑</span><span class="bug-label">这是皇冠</span>';
+    crownBtn.addEventListener('click', function () { overlay.remove(); onSelect(CLAIM_CROWN); });
+    grid.appendChild(crownBtn);
+
+    var cancel = document.createElement('button');
+    cancel.className = 'cancel-btn';
+    cancel.textContent = '取消';
+    cancel.addEventListener('click', function () { overlay.remove(); renderAll(); });
+    modal.appendChild(cancel);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  }
+
+  function showPassTargetModal() {
+    if (!G || !G.cardInPlay) return;
+    var targets = validPassTargets();
+    if (!targets.length) return;
+
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    var modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = '<h3>把牌传给谁？</h3><div class="pass-target-grid"></div>';
+    var grid = modal.querySelector('.pass-target-grid');
+
+    targets.forEach(function (seat) {
+      var btn = document.createElement('button');
+      btn.className = 'pass-target-btn';
+      btn.textContent = nameOf(seat);
+      btn.addEventListener('click', function () {
+        overlay.remove();
+        showClaimModal(function (claim) { doPass(seat, claim); });
+      });
+      grid.appendChild(btn);
+    });
+
+    var cancel = document.createElement('button');
+    cancel.className = 'cancel-btn';
+    cancel.textContent = '取消';
+    cancel.addEventListener('click', function () { overlay.remove(); renderAll(); });
+    modal.appendChild(cancel);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  }
+
+  /* ============================ 动作 ============================ */
+  function dispatchAct(payload) {
+    payload.id = meId;
+    payload.seat = mySeat;
+    payload.rev = G ? G.rev : 0;
+    if (amAuthority()) applyAct(payload);           // 自己就是结算者，直接结算（通道不会回传自己）
+    else send('dg_act', payload);
+  }
+
+  function doPlay(cardIndex, targetSeat, claim) {
+    if (!canIPlay()) { renderAll(); return; }
+    var card = myHand[cardIndex];
+    if (!card) return;
+
+    myHand.splice(cardIndex, 1);                    // 先乐观移除，等结算者补发的手牌来对齐
+    pendingActUntil = Date.now() + 5000;
+    dispatchAct({ kind: 'play', card: plainCard(card), targetSeat: targetSeat, claim: claim });
+    handSig = '';
+    centerSig = '';
+    renderAll();
+  }
+
+  function doPass(targetSeat, claim) {
+    if (!canIPass()) { renderAll(); return; }
+    pendingActUntil = Date.now() + 5000;
+    dispatchAct({ kind: 'pass', targetSeat: targetSeat, claim: claim });
+    centerSig = '';
+    renderAll();
+  }
+
+  function doAccept(believe) {
+    if (!canIRespond()) return;
+    pendingActUntil = Date.now() + 5000;
+    dispatchAct({ kind: 'accept', believe: !!believe });
+    centerSig = '';
+    renderAll();
+  }
+
+  /* ============================ 拍桌 ============================ */
+  function slamTable() {
+    var hand = document.createElement('div');
+    hand.className = 'slam-hand';
+    hand.textContent = '🖐️';
+    document.body.appendChild(hand);
+    tableArea.classList.remove('shake', 'slam-flash');
+    void tableArea.offsetWidth;        // 强制重排，让动画能重复播放
+    tableArea.classList.add('shake', 'slam-flash');
+    setTimeout(function () {
+      hand.remove();
+      tableArea.classList.remove('shake', 'slam-flash');
+    }, 620);
+    if (navigator.vibrate) { try { navigator.vibrate(60); } catch (e) {} }
+  }
+
+  function broadcastSlam() {
+    send('dg_slam', { by: myName, ts: Date.now() });
+    pushLog('👋 ' + myName + ' 拍了桌子');
+    slamTable();
+  }
+
+  function showSlamButton() {
+    if (!slamBtn) return;
+    slamBtn.classList.remove('hidden');
+    clearTimeout(slamTimer);
+    slamTimer = setTimeout(function () { slamBtn.classList.add('hidden'); }, 9000);
+  }
+
+  /* ============================ 主循环 ============================ */
+  function loop() {
+    var now = Date.now();
+
+    if (now - lastPresenceAt >= PRESENCE_MS) presenceTick(true);
+
+    owners = computeOwners(now);
+    var a = lowestOccupied(owners);
+    if (a !== authSeat) authSeat = a;
+
+    var authority = amAuthority();
+    if (authority) {
+      if (!wasAuthority) {
+        wasAuthority = true;
+        authSince = now;
+        if (G) { G.rev = (G.rev || 0) + 1; lastGameSent = 0; }   // 接任 → 提升版本号，压过旧状态
+        lastHandTo = {};
+      }
+      authTick(now);
+    } else if (wasAuthority) {
+      wasAuthority = false;
+    }
+
+    renderAll();
+  }
+
+  /* ============================ 初始化 ============================ */
+  function boot() {
+    if (logs.length === 0) {
+      pushLog('👋 翻开皇冠会触发惩罚堆，右下角会自动弹出「拍桌」，点了全房间一起震');
+    }
+    renderBar();
+    presenceTick(false);
+    scheduleRender();
+
+    initChannel();
+
+    setInterval(loop, 1000);
+    setTimeout(function () { presenceTick(true); }, 300);
+
+    countSel.addEventListener('change', function () {
+      var n = clamp(countSel.value, MIN_SEATS, MAX_SEATS);
+      if (!amAuthority()) {
+        pushLog('人数只能由座位 1 的人改');
+        countSel.value = String(playerCount);
+        return;
+      }
+      if (n === playerCount && G) return;
+      playerCount = n;
+      authorityNewGame();
+    });
+
+    resetBtn.addEventListener('click', function () {
+      if (!amAuthority()) { pushLog('只有座位 1 的人能开新局'); return; }
+      authorityNewGame();
+    });
+
+    /* 拍桌按钮只由牌局触发（皇冠 → 惩罚堆），不再提供常驻测试按钮 */
+    slamBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      broadcastSlam();
+    });
+
+    document.getElementById('btnRename').addEventListener('click', function (e) {
+      e.stopPropagation();
+      var v = prompt('你的名字（只影响这个标签页）：', myName);
+      if (v === null) return;
+      var t = String(v).trim().slice(0, 10);
+      if (!t) return;
+      myName = t;
+      try { sessionStorage.setItem('dgzl_me_name', t); } catch (err) {}
+      presenceTick(true);
+      scheduleRender();
+    });
+
+    window.addEventListener('beforeunload', function () {
+      try { if (ch) ch.send('dg_presence', { id: meId, name: myName, seat: -1, ts: Date.now() }); } catch (e) {}
+    });
+
+    /* 从后台回来：立刻重播一次，别等定时器 */
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') {
+        presenceTick(true);
+        if (amAuthority() && G) broadcastGame();
+        renderAll();
+      }
+    });
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

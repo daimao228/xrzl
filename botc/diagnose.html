@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -28,7 +28,7 @@
   <div class="verdict" id="verdict"></div>
 </div>
 
-<script src="supabase-config.js"></script>
+<script src="../shared/supabase-config.js"></script>
 <script>
 (function () {
   const outEl = document.getElementById('out');
@@ -68,7 +68,7 @@
     outEl.textContent = lines.join('\n');
     if (!url || !key) {
       document.getElementById('verdict').innerHTML =
-        '<span class="bad">配置为空</span>：请确认 supabase-config.js 和这个页面在同一目录，并且已填 url / key。';
+        '<span class="bad">配置为空</span>：请确认 ../shared/supabase-config.js 能打开，并且已填 url / key。';
       return;
     }
 

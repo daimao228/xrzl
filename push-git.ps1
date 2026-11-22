@@ -40,7 +40,7 @@ if (-not $gitExe) {
   Say '没有找到 Git。' 'Red'
   Say '安装命令（管理员 PowerShell 跑一次，然后重开窗口）：' 'Yellow'
   Say '    winget install --id Git.Git -e'
-  Say '或者直接用网页上传：见 README-deploy-gitee.md' 'Yellow'
+  Say '或者直接用网页上传：见 README-deploy.md' 'Yellow'
   exit 1
 }
 Say ("Git: " + (& $gitExe --version)) 'Green'

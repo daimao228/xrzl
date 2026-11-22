@@ -1,15 +1,14 @@
-﻿# 在 Supabase 上跑「血染钟楼」DM/玩家端
+# 在 Supabase 上跑「血染钟楼」DM/玩家端
 
 ## 这次改了什么
 
 | 文件 | 说明 |
 |---|---|
-| `supabase-config.js` | **新增**。填项目 URL + 公开 key，就这三行 |
-| `shared.js` | 通信层从 `BroadcastChannel` 换成 **Supabase Realtime**（自带 WebSocket 客户端，不加载任何 CDN，国内网络也不怕）。没填配置时自动回退本机模式 |
-| `index.html` | **新增**。房间入口页：随机房间号 + 一键生成 DM / 玩家链接 |
-| `dm.html` | 加配置脚本；玩家重连后自动补发状态；收到 `request_state` 自动应答 |
-| `player.html` | 加配置脚本；DM 没在线时自动重试登录（最多 6 次）；重连后自动重新登录 |
-| `supabase/functions/site/index.ts` | 可选。用 Edge Function 托管页面时用（见第 3 节 A） |
+| `shared/supabase-config.js` | **新增**。填项目 URL + 公开 key，就这三行 |
+| `shared/shared.js` | 通信层从 `BroadcastChannel` 换成 **Supabase Realtime**（自带 WebSocket 客户端，不加载任何 CDN，国内网络也不怕）。没填配置时自动回退本机模式 |
+| `botc/index.html` | **新增**。房间入口页：随机房间号 + 一键生成 DM / 玩家链接 |
+| `botc/dm.html` | 加配置脚本；玩家重连后自动补发状态；收到 `request_state` 自动应答 |
+| `botc/player.html` | 加配置脚本；DM 没在线时自动重试登录（最多 6 次）；重连后自动重新登录 |
 
 房间号通过 URL 传：`?room=abcd`。**DM 和玩家必须是同一个房间号**才能互相看见；不同房间的人互不干扰。左下角小标签会显示连接状态。
 
@@ -22,7 +21,7 @@ Supabase Dashboard → 你的项目 → **Connect**（或 Settings → API Keys�
 - **Project URL** → `https://xxxx.supabase.co`
 - **publishable key**（`sb_publishable_...`）；老项目也可以用 `anon public`
 
-填进 `supabase-config.js`：
+填进 `shared/supabase-config.js`：
 
 ```js
 window.SUPABASE_CONFIG = {
@@ -95,37 +94,20 @@ grant usage, select on sequence public.bg_messages_id_seq to anon, authenticated
 ## 3. 页面放哪
 
 **Storage 的公网 URL 不能直接当静态站用**：它会把 `.html` 以 `text/plain` 返回，浏览器只显示源码
-（见 [supabase/supabase#39094](https://github.com/supabase/supabase/issues/39094)）。两条路选一条：
+（见 [supabase/supabase#39094](https://github.com/supabase/supabase/issues/39094)）。
+所以页面一律放外面的静态托管，Supabase 只负责联机（`botc/`、`dgzl/` 整个文件夹一起上传，相对路径都写好了）：
 
-### A. 全都在 Supabase：Edge Function 托管
-
-需要 Node.js（用 `npx`）：
-
-```bash
-npx supabase login
-npx supabase link --project-ref <你的项目ref>
-npx supabase functions deploy site --no-verify-jwt
-```
-
-然后 Storage 里新建**公开桶** `botc`，把这 5 个文件传到桶根目录：
-`index.html`、`dm.html`、`player.html`、`spectator.html`、`shared.js`、`supabase-config.js`、`_redirects`
-
-访问：`https://<ref>.supabase.co/functions/v1/site/index.html`
-
-### B. 页面放别处 + Supabase 只做联机（最快）
-
-任意静态托管，整个文件夹原样上传即可（相对路径都写好了）：
-
-- Netlify Drop：<https://app.netlify.com/drop> 直接把文件夹拖进去，秒出网址
+- 帽子云：见 [README-deploy.md](README-deploy.md)
+- Netlify Drop：<https://app.netlify.com/drop> 直接把仓库根目录拖进去
 - Cloudflare Pages / GitHub Pages / Vercel 同理
 
-Supabase 只负责 Realtime，配置一模一样，不用改一行代码。
+> 以前那个「用 Edge Function 托管整站」的草稿（`supabase/functions/site/index.ts`）已经删了，不用再折腾那条路。
 
 ---
 
 ## 4. 开一局
 
-1. 打开 `index.html`，看房间号（或点「随机」）
+1. 打开站点首页 `index.html`，进「血染钟楼」= `botc/index.html`，看房间号（或点「随机」）
 2. 上排点「进入主持人端」——**只有你自己打开**
 3. 下排「复制链接」发群里，玩家各自打开、填座位号 + 用户名 + 密码登录（首次即注册）
 4. 两边左下角都变成「已连接」→ DM 端加座位、分角色，玩家端会自动收到
@@ -136,7 +118,7 @@ Supabase 只负责 Realtime，配置一模一样，不用改一行代码。
 |---|---|
 | 左下角一直「连接中…」 | key 填错，或项目暂停了（免费项目闲置会休眠，去 Dashboard 唤醒） |
 | Console 报 `关闭码 1006` | WebSocket 被你这条网络挡住了。跑第 2 节的 SQL，页面会在 7 秒后自动切到 HTTPS 轮询 |
-| 显示「本机模式」 | `supabase-config.js` 没被加载/没填值，只有同一浏览器能看到彼此 |
+| 显示「本机模式」 | `shared/supabase-config.js` 没被加载/没填值，只有同一浏览器能看到彼此 |
 | 玩家端一直「等不到 DM 端回应」 | DM 页面没开，或房间号不一样 |
 | 页面显示的是源码 | 你直接从 Storage 公网 URL 打开了 `.html`，换成第 3 节 A 或 B |
 | 改了文件后没生效 | 重新上传覆盖，并在网址后加 `?v=2` 绕过缓存 |
@@ -146,12 +128,12 @@ Supabase 只负责 Realtime，配置一模一样，不用改一行代码。
 ## 附：美术素材怎么放
 
 ```
-icons/    22 个角色图标（官方 PNG，已压到 160×160，共 437KB）
-assets/   素材库里的 SVG 装饰（共 19KB，矢量，可任意缩放）
+botc/icons/    22 个角色图标（官方 PNG，已压到 160×160，共 437KB）
+botc/assets/   素材库里的 SVG 装饰（共 19KB，矢量，可任意缩放）
 ```
 
-- 角色图标由 `shared.js` 顶部的 `ROLE_ICON_DIR = 'icons/'` 控制；留空 `''` 就退回内置手绘线稿
-- 换图标：把同名 `<角色id>.png` 覆盖进 `icons/` 即可，不用改代码
-- 换装饰：把同名文件覆盖进 `assets/`（`corner.svg` 角花、`divider.svg` 分隔线、`seal.svg` 火漆印、
+- 角色图标由 `shared/shared.js` 顶部的 `ROLE_ICON_DIR = 'icons/'` 控制（相对页面）；留空 `''` 就退回内置手绘线稿
+- 换图标：把同名 `<角色id>.png` 覆盖进 `botc/icons/` 即可，不用改代码
+- 换装饰：把同名文件覆盖进 `botc/assets/`（`corner.svg` 角花、`divider.svg` 分隔线、`seal.svg` 火漆印、
   `runes.svg` 法阵、`bloodmoon.svg` 血月、`vignette.svg` 暗角、`tower.svg` 钟楼、`birds.svg` 飞鸟、`chapter.svg` 章节花饰）
 - **部署时整个文件夹一起拖**，这两个目录会自动带上

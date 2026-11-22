@@ -13,34 +13,36 @@
 
 ### 2. 上传文件
 
-进入刚建好的空仓库 → 点 **上传文件 / Upload files** → 把 `新建文件夹 (3)` 里的这些拖进去：
+进入刚建好的空仓库 → 点 **上传文件 / Upload files** → 把 `新建文件夹 (3)` 里的这些东西整份拖进去（保持文件夹结构）：
 
 ```
-dm.html
-player.html
-spectator.html
-index.html
-shared.js
-supabase-config.js
-assets/          （整个文件夹）
-icons/           （整个文件夹）
-_redirects       （可选，帽子云用不到）
+index.html               站点首页（两个游戏的入口）
+shared/                  公共模块：shared.js、supabase-config.js
+botc/                    血染钟楼：dm / player / spectator / lobby … + assets、icons
+dgzl/                    德国蟑螂：index（单机）、online（联机）、cards（卡面）
+_redirects               可选，帽子云用不到
 ```
 
-> 网页上传支持整个文件夹拖拽；如果提示超过 100 个文件，分两批传（先传 html/js，再传 assets、icons）。
+> 网页上传支持整个文件夹拖拽；文件超过 100 个时分两批传。
+> `dgzl/原素材/` 是 46MB 的原始卡面，已在 `.gitignore` 里，**不要上传**。
 
-提交后文件夹结构应该是这样（根目录直接就是这些文件，**不要**多套一层文件夹）：
+提交后仓库结构应该是这样（首页在根目录，两个游戏各一个文件夹）：
 
 ```
 仓库根/
-├── dm.html
-├── player.html
-├── spectator.html
-├── index.html
-├── shared.js
-├── supabase-config.js
-├── assets/
-└── icons/
+├── index.html            ← 站点首页
+├── shared/
+│   ├── shared.js         ← 通信 / 角色表（两端共用）
+│   └── supabase-config.js
+├── botc/                 ← 血染钟楼
+│   ├── index.html        ← 房间入口（DM / 玩家 / 旁观 / 大厅）
+│   ├── dm.html  player.html  spectator.html  lobby.html  diagnose.html
+│   ├── assets/
+│   └── icons/
+└── dgzl/                 ← 德国蟑螂
+    ├── index.html        ← 单机版（对外主链接）
+    ├── online.html       ← 联机版
+    └── cards/            ← 卡面 webp，共 0.5MB
 ```
 
 ### 3. 帽子云建站
@@ -83,10 +85,11 @@ transport: 'poll',
 
 ### 6. 验证
 
-手机打开 `https://botc.maozi.io/index.html?room=xxx`：
+手机打开 `https://botc.maozi.io/`：
 
-- 页面能开 → 静态托管正常
-- 点左下角状态标签 → 显示「已连接 · 轮询模式」→ 代理正常
+- 首页出现「血染钟楼 / 德国蟑螂」两个入口 → 静态托管正常
+- 进「血染钟楼」→ 房间入口页能开 → `/botc/…` 这类子目录路径也正常
+- 点页面左下角状态标签 → 显示「已连接 · 轮询模式」→ 代理正常
 - 显示 `failed to fetch` → 反向代理规则没生效，回去检查「请求路径 开头是 /rest/v1」和 Host 透传
 
 ---
@@ -134,8 +137,8 @@ winget install --id Git.Git -e
 
 | 现象 | 原因 |
 |---|---|
-| 页面 404 | 输出目录填错了；应该留空或 `/`，且 html 在仓库根目录 |
+| 页面 404 | 输出目录填错了；应该留空或 `/`，且 `index.html` 在仓库根目录 |
 | `failed to fetch` | 反向代理规则没生效，或 Host 透传选错 |
-| 图标不显示 | `icons/` 文件夹没上传成功 |
-| 样式错乱 | `assets/` 没上传，或被多套了一层文件夹 |
+| 图标不显示 | `botc/icons/` 文件夹没上传成功 |
+| 样式错乱 | `botc/assets/` 没上传，或被多套了一层文件夹 |
 | 推送时 403 | 密码用了登录密码，应改用令牌 |
