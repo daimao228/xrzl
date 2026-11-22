@@ -525,14 +525,15 @@
       if (msg.type === 'dg_hello') {
         if (netRole !== 'host' || p.id === NET_ID) return;
         let idx = players.findIndex(x => x.netId === p.id);
-        if (idx < 0 && players.length < playerCount) {
-          idx = players.length;
-          players.push({ id: idx, name: p.name || ('玩家' + (idx + 1)), hand: [], faceUp: [], lost: false, netId: p.id });
+        if (idx < 0) {
+          /* 找一个还没被别的设备占用的座位（房主自己那桌不算） */
+          idx = players.findIndex((x, i) => i !== MY_SEAT && !x.netId);
+          if (idx < 0) { netSend('dg_seat', { id: p.id, seat: -1 }); return; }
+          players[idx].netId = p.id;
+          players[idx].name = p.name || players[idx].name;
         }
-        if (idx >= 0) {
-          netSend('dg_seat', { id: p.id, seat: idx });
-          netBroadcast();
-        }
+        netSend('dg_seat', { id: p.id, seat: idx });
+        netBroadcast();
         return;
       }
       if (msg.type === 'dg_join') {
@@ -555,6 +556,7 @@
         netRole = 'host';
         MY_SEAT = 0;
         initGame();
+        if (players[MY_SEAT]) players[MY_SEAT].netId = NET_ID;
         netBroadcast();
       }
     }, 1200);
@@ -1247,6 +1249,7 @@
 </script>
 </body>
 </html>
+
 
 
 
