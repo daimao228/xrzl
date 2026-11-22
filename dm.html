@@ -659,6 +659,7 @@ html[data-phase="night"] body {
 
 /* ---------- 红鲱鱼 ---------- */
 .seat-redh { font-size:10px; color:#b06a14; margin:-1px 0 5px; letter-spacing:.3px; }
+.seat-untold { font-size:10px; color:#a87c14; margin:-1px 0 5px; }
 .ni-rh { margin-top:3px; font-size:10px; color:#b06a14; }
 </style>
 </head>
@@ -990,6 +991,7 @@ function load() {
       marks: Array.isArray(p.marks) ? p.marks.filter(m => MARKS.includes(m)) : [],
       belief: (typeof p.belief === 'string' && ROLES[p.belief]) ? p.belief : null,
       redHerring: !!p.redHerring,
+      roleSent: !!p.roleSent,
       virginUsed: !!p.virginUsed,
       deadVoteUsed: !!p.deadVoteUsed
     }));
@@ -1356,6 +1358,7 @@ function renderSeats() {
       ${p.role === 'drunk'
         ? `<div class="seat-belief-row"><span>假身份</span><select class="seat-belief" data-id="${p.id}">${beliefOptions(p.belief)}</select></div>`
         : ''}
+      ${p.role && !p.roleSent ? '<div class="seat-untold">📤 尚未告知</div>' : ''}
       ${p.role === 'fortune_teller'
         ? `<div class="seat-belief-row"><span>🐟 红鲱鱼</span><select class="seat-redherring" data-id="${p.id}">${redHerringOptions(p.id)}</select></div>`
         : ''}
@@ -2096,7 +2099,9 @@ function dealFromPool() {
     p.marks = [];
     p.belief = (p.role === 'drunk') ? pickDrunkBelief() : null;
     p.redHerring = false;
+    p.roleSent = false;   // 随机分发后不自动告诉玩家
   });
+  state.rolesSent = false;
   ensureRedHerring();
   ensureBluffs();
   renderBluff();
@@ -2180,6 +2185,7 @@ function broadcastRoleToSeat(seatId, silent) {
   const seatNo = state.players.indexOf(p) + 1;
   const shown = displayRoleOf(p);
   dmChannel.send('assign_role', { seatId: seatNo, roleId: shown, roleName: ROLES[shown].name });
+  p.roleSent = true;
   /* 恶魔额外拿到三个伪装 */
   if (ROLES[p.role] && ROLES[p.role].team === 'demon') sendBluffsToSeat(seatNo);
   state.rolesSent = true;   // 发过身份后锁定座位
@@ -2300,8 +2306,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
       p.name = username;
       const shownRole = displayRoleOf(p);
-      dmChannel.send('login_ok', { seatId: seat, playerId, roleId: shownRole || null,
-        roleName: shownRole ? ROLES[shownRole].name : '',
+      const shownForPlayer = p.roleSent ? shownRole : null;
+      dmChannel.send('login_ok', { seatId: seat, playerId, roleId: shownForPlayer || null,
+        roleName: shownForPlayer ? ROLES[shownForPlayer].name : '',
         submitted: Number(state.submitted[seat]) === Number(state.currentNight) });
       sendDmHistory(seat);
       if (state.revealed) dmChannel.send('reveal', buildReveal());
@@ -2337,8 +2344,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const rp = state.players[seat - 1];
       rp.name = username;
       const rRole = displayRoleOf(rp);
-      dmChannel.send('login_ok', { seatId: seat, playerId, roleId: rRole || null,
-        roleName: rRole ? ROLES[rRole].name : '',
+      const rForPlayer = rp.roleSent ? rRole : null;
+      dmChannel.send('login_ok', { seatId: seat, playerId, roleId: rForPlayer || null,
+        roleName: rForPlayer ? ROLES[rForPlayer].name : '',
         submitted: Number(state.submitted[seat]) === Number(state.currentNight) });
       sendDmHistory(seat);
       if (state.revealed) dmChannel.send('reveal', buildReveal());
@@ -3172,6 +3180,8 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
+
+
 
 
 
