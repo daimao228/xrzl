@@ -329,6 +329,17 @@
     box-shadow: 0 6px 0 #1a2a1a, 0 0 14px #f5d74288;
   }
   .pass-target-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a2a1a; }
+  .net-bar {
+    display: flex; align-items: center; gap: 8px; justify-content: center;
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+    border-radius: 20px; padding: 5px 14px; font-size: 0.75rem; color: #cfe0c8;
+  }
+  .net-bar .dot { color: #56705a; }
+  .seat.you { border-color: #7ad19a; box-shadow: 0 0 14px rgba(122,209,154,.5), 0 6px 0 #1a2a1a; }
+  .seat-you-badge {
+    display: inline-block; margin-left: 4px; font-size: 0.58rem; font-weight: 700;
+    background: #2e7d5b; color: #eafff2; border-radius: 8px; padding: 0 5px; vertical-align: 2px;
+  }
   .count-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; justify-content: center; }
   .count-row span { font-size: 0.72rem; color: #9ab89a; }
   .count-row select {
@@ -339,6 +350,11 @@
 </head>
 <body>
 <div class="game-wrapper">
+  <div class="net-bar" id="netBar">
+    <span id="netRoom">房间 —</span>
+    <span class="dot">·</span>
+    <span id="netMe">你：—</span>
+  </div>
   <div class="table-area" id="tableArea">
     <div class="center-area" id="centerArea"></div>
   </div>
@@ -368,6 +384,20 @@
     { name: '蝎子', emoji: '🦂', art: '蝎子' }
   ];
   let playerCount = 4;   // 4 ~ 8，可调
+  const YOU_BADGE = '<span class="seat-you-badge">你</span>';
+
+  /* 从游戏大厅带过来的身份 */
+  const LOBBY_ID = (() => {
+    try { return JSON.parse(localStorage.getItem('botc_lobby') || 'null'); } catch (e) { return null; }
+  })();
+  const MY_NAME = (LOBBY_ID && LOBBY_ID.name) ? String(LOBBY_ID.name).slice(0, 10) : '';
+  const NET_ROOM = (() => {
+    const h = String(location.hash || '').replace(/^#/, '');
+    if (h.indexOf('room=') === 0) return decodeURIComponent(h.slice(5));
+    if (LOBBY_ID && LOBBY_ID.room) return LOBBY_ID.room;
+    try { return localStorage.getItem('botc_last_room') || ''; } catch (e) { return ''; }
+  })();
+  const MY_SEAT = 0;   // 从大厅进来的人默认坐 0 号位（联机后由入座逻辑接管）
   const CARD_ART_ROOT = 'dgzl-cards';   // 压缩后的 webp 卡面（约 8KB/张）
 
   function cardImage(typeIndex, variant) {
@@ -408,7 +438,7 @@
 
     players = [];
     for (let i = 0; i < playerCount; i++) {
-      players.push({ id: i, name: `玩家${i + 1}`, hand: [], faceUp: [] });
+      players.push({ id: i, name: (i === MY_SEAT && MY_NAME) ? MY_NAME : `玩家${i + 1}`, hand: [], faceUp: [] });
     }
 
     const dealDeck = [];
@@ -452,7 +482,7 @@
     document.querySelectorAll('.seat').forEach(el => el.remove());
     players.forEach((p, idx) => {
       const seat = document.createElement('div');
-      seat.className = 'seat';
+      seat.className = 'seat' + (idx === MY_SEAT && MY_NAME ? ' you' : '');
       seat.dataset.id = idx;
       /* 按人数算角度，均匀分布在圆桌边缘 */
       {
@@ -488,7 +518,7 @@
       });
 
       seat.innerHTML = `
-        <div class="seat-name">${p.name}</div>
+        <div class="seat-name">${p.name}${idx === MY_SEAT && MY_NAME ? YOU_BADGE : ''}</div>
         <div class="seat-hand-count">手牌 ${p.hand.length}</div>
         <div class="seat-face-up">${badges || '<span style="color:#6a8a6a;font-size:0.6rem;">—</span>'}</div>
       `;
@@ -932,6 +962,13 @@
     return false;
   }
 
+  (function paintNetBar() {
+    const roomEl = document.getElementById('netRoom');
+    const meEl = document.getElementById('netMe');
+    if (roomEl) roomEl.textContent = '房间 ' + (NET_ROOM || '—');
+    if (meEl) meEl.textContent = '你：' + (MY_NAME || '未登录（从游戏大厅进入会自动带上名字）');
+  })();
+
   document.getElementById('resetBtn').addEventListener('click', initGame);
   document.getElementById('countSel').addEventListener('change', (e) => {
     const n = Number(e.target.value) || 4;
@@ -945,5 +982,7 @@
 </script>
 </body>
 </html>
+
+
 
 
