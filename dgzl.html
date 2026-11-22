@@ -451,149 +451,7 @@
     if (LOBBY_ID && LOBBY_ID.room) return LOBBY_ID.room;
     try { return localStorage.getItem('botc_last_room') || ''; } catch (e) { return ''; }
   })();
-  let MY_SEAT = 0;     // 联机时由房主分配座位
-
-  /* ==================== 联机（房主权威） ==================== */
-  let netRole = 'solo';       // solo | host | client
-  let netChannel = null;
-  let netApplying = false;
-  let hostTimer = null;
-  const pendingNames = {};
-  const NET_ID = 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-
-  function netSend(type, payload) {
-    if (netChannel) { try { netChannel.send(type, payload); } catch (e) {} }
-  }
-  function serializeCardInPlay() {
-    if (!cardInPlay) return null;
-    const o = Object.assign({}, cardInPlay);
-    o.seenBy = [...(cardInPlay.seenBy || [])];
-    return o;
-  }
-  function snapshotState() {
-    return {
-      players: players.map(p => ({ id: p.id, name: p.name, hand: p.hand, faceUp: p.faceUp, lost: !!p.lost })),
-      currentPlayerIndex: currentPlayerIndex,
-      cardInPlay: serializeCardInPlay(),
-      penaltyDeck: penaltyDeck,
-      gameOver: gameOver,
-      log: logText ? logText.textContent : '',
-      hostId: NET_ID
-    };
-  }
-  function netBroadcast() {
-    if (netRole !== 'host' || netApplying) return;
-    netSend('dg_state', snapshotState());
-  }
-  function applyNetState(s) {
-    if (!s || !Array.isArray(s.players)) return;
-    netApplying = true;
-    players = s.players.map(p => ({
-      id: p.id, name: p.name, hand: p.hand || [], faceUp: p.faceUp || [], lost: !!p.lost
-    }));
-    currentPlayerIndex = s.currentPlayerIndex | 0;
-    cardInPlay = s.cardInPlay ? Object.assign({}, s.cardInPlay, { seenBy: new Set(s.cardInPlay.seenBy || []) }) : null;
-    penaltyDeck = s.penaltyDeck || [];
-    gameOver = !!s.gameOver;
-    if (s.log && logText) logText.textContent = s.log;
-    renderAll();
-    netApplying = false;
-  }
-  function initNet() {
-    if (!NET_ROOM || typeof openChannel !== 'function') return;
-    netChannel = openChannel((msg) => {
-      if (!msg || !msg.type) return;
-      const p = msg.payload || {};
-      if (msg.type === 'dg_slam') { slamTable(); return; }
-      if (msg.type === 'dg_state') {
-        if (netRole === 'solo') {
-          netRole = 'client';
-          clearTimeout(hostTimer);
-        }
-        if (netRole === 'host') {
-          if (p.hostId && p.hostId < NET_ID) { netRole = 'client'; MY_SEAT = -1; applyNetState(p); }
-        } else {
-          applyNetState(p);
-        }
-        return;
-      }
-      if (msg.type === 'dg_seat') {
-        if (p.id && p.id !== NET_ID) return;   // 只认发给自己的座位
-        MY_SEAT = p.seat | 0;
-        renderAll();
-        return;
-      }
-      if (msg.type === 'dg_hello') {
-        if (netRole !== 'host' || p.id === NET_ID) return;
-        pendingNames[p.id] = p.name || '玩家';
-        const idx = players.findIndex(x => x.netId === p.id);
-        netSend('dg_seat', { id: p.id, seat: idx });   // -1 = 还没选座
-        netBroadcast();
-        return;
-      }
-      if (msg.type === 'dg_claim') {
-        if (netRole !== 'host' || p.id === NET_ID) return;
-        let seat = Number(p.seat);
-        if (!(seat >= 0)) {
-          seat = players.findIndex((x, i) => i !== MY_SEAT && !x.netId);
-        }
-        if (!(seat >= 0) || seat >= players.length) return;
-        if (players[seat].netId && players[seat].netId !== p.id) return;   // 已有人
-        players.forEach(x => { if (x.netId === p.id) x.netId = null; });
-        players[seat].netId = p.id;
-        players[seat].name = p.name || pendingNames[p.id] || players[seat].name;
-        netSend('dg_seat', { id: p.id, seat: seat });
-        netBroadcast();
-        return;
-      }
-      if (msg.type === 'dg_join') {
-        if (netRole === 'host' && p.id !== NET_ID && !players.some(x => x.netId === p.id)) {
-          if (players.length < playerCount) {
-            const idx = players.length;
-            players.push({ id: idx, name: p.name || ('玩家' + (idx + 1)), hand: [], faceUp: [], lost: false, netId: p.id });
-            netSend('dg_seat', { id: p.id, seat: idx });
-            netBroadcast();
-          }
-        }
-        return;
-      }
-      if (msg.type === 'dg_action') { if (netRole === 'host') hostApply(p); return; }
-    });
-    /* 选举：等 1.2 秒，收到别人的 state 就当客户端，否则当房主 */
-    netSend('dg_hello', { id: NET_ID, name: MY_NAME || '玩家' });
-    hostTimer = setTimeout(() => {
-      if (netRole === 'solo') {
-        netRole = 'host';
-        MY_SEAT = 0;
-        initGame();
-        if (players[MY_SEAT]) players[MY_SEAT].netId = NET_ID;
-        netBroadcast();
-        setInterval(netBroadcast, 2000);      // 房主持续广播，后进来的也能收到
-      }
-    }, 1200);
-
-    /* 客户端持续举手，房主收到就补发座位和牌局 */
-    setInterval(() => {
-      if (netRole === 'client') netSend('dg_hello', { id: NET_ID, name: MY_NAME || '玩家' });
-    }, 3000);
-  }
-  function iAmActing() {
-    if (netRole === 'client') return MY_SEAT === currentPlayerIndex;
-    return true;
-  }
-  function hostApply(p) {
-    if (!p || p.seat !== undefined && Number(p.seat) !== Number(netRole === 'host' && p.seat >= 0 ? p.seat : p.seat)) { /* noop */ }
-    if (p.kind === 'play') {
-      if (Number(p.seat) !== Number(currentPlayerIndex)) return;
-      executePlayCard(p.cardIndex, p.targetId, p.claimedType);
-    } else if (p.kind === 'pass') {
-      if (!cardInPlay || Number(p.seat) !== Number(cardInPlay.targetPlayerIndex)) return;
-      executePassCard(p.targetId, p.claimedType);
-    } else if (p.kind === 'accept') {
-      if (!cardInPlay || Number(p.seat) !== Number(cardInPlay.targetPlayerIndex)) return;
-      handleAccept(p.believe);
-    }
-  }
+  const MY_SEAT = 0;   // 从大厅进来的人默认坐 0 号位（联机后由入座逻辑接管）
   const CARD_ART_ROOT = 'dgzl-cards';   // 压缩后的 webp 卡面（约 8KB/张）
 
   function cardImage(typeIndex, variant) {
@@ -673,7 +531,6 @@
     renderSeats();
     renderCenter();
     renderHandBar();
-    netBroadcast();
   }
 
   function renderSeats() {
@@ -716,19 +573,10 @@
       });
 
       seat.innerHTML = `
-        <div class="seat-name">${(netRole !== 'solo' && !p.netId) ? '空位（点击入座）' : p.name}${idx === MY_SEAT && MY_NAME ? YOU_BADGE : ''}</div>
-        ${(netRole !== 'solo' && !p.netId) ? '' : `<div class="seat-hand-count">手牌 ${p.hand.length}</div>`}
+        <div class="seat-name">${p.name}${idx === MY_SEAT && MY_NAME ? YOU_BADGE : ''}</div>
+        <div class="seat-hand-count">手牌 ${p.hand.length}</div>
         <div class="seat-face-up">${badges || '<span style="color:#6a8a6a;font-size:0.6rem;">—</span>'}</div>
       `;
-      if (netRole === 'client' && !p.netId) {
-        seat.style.cursor = 'pointer';
-        seat.addEventListener('click', () => {
-          netSend('dg_claim', { id: NET_ID, seat: idx, name: MY_NAME || '玩家' });
-          MY_SEAT = idx;          // 本地先坐下，等房主确认后会被纠正
-          if (players[idx]) { players[idx].name = MY_NAME || players[idx].name; players[idx].netId = NET_ID; }
-          renderAll();
-        });
-      }
       tableArea.appendChild(seat);
     });
   }
@@ -849,17 +697,7 @@
       return;
     }
 
-    if (netRole === 'client' && MY_SEAT < 0) {
-      handBar.innerHTML = '<div class="hand-bar-hint">请点牌桌上的「空位」入座，或点下面的按钮自动入座<br><button id="autoSeatBtn" style="margin-top:8px;padding:8px 16px;border-radius:20px;font-family:inherit;cursor:pointer;">⚡ 自动入座</button></div>';
-      const ab = document.getElementById('autoSeatBtn');
-      if (ab) ab.addEventListener('click', (e) => {
-        e.stopPropagation();
-        netSend('dg_claim', { id: NET_ID, seat: -1, name: MY_NAME || '玩家' });
-      });
-      return;
-    }
-    const viewIdx = (netRole === 'client') ? MY_SEAT : currentPlayerIndex;
-    const cp = players[viewIdx];
+    const cp = players[currentPlayerIndex];
     if (!cp || cp.hand.length === 0) {
       handBar.innerHTML = '<div class="hand-bar-hint">没有手牌</div>';
       return;
@@ -1001,7 +839,7 @@
     if (dragState || gameOver) return;
 
     const handCard = e.target.closest('.hand-card');
-    if (handCard && !cardInPlay && iAmActing()) {
+    if (handCard && !cardInPlay) {
       const idx = parseInt(handCard.dataset.cardIndex);
       startDrag(e, handCard, 'hand', idx);
       return;
@@ -1093,18 +931,7 @@
 
   // ========== 游戏动作 ==========
   function executePlayCard(cardIndex, targetId, claimedType) {
-    if (netRole === 'client') { netSend('dg_action', { kind: 'play', seat: MY_SEAT, cardIndex: cardIndex, targetId: targetId, claimedType: claimedType }); return; }
-    if (netRole === 'client' && MY_SEAT < 0) {
-      handBar.innerHTML = '<div class="hand-bar-hint">请点牌桌上的「空位」入座，或点下面的按钮自动入座<br><button id="autoSeatBtn" style="margin-top:8px;padding:8px 16px;border-radius:20px;font-family:inherit;cursor:pointer;">⚡ 自动入座</button></div>';
-      const ab = document.getElementById('autoSeatBtn');
-      if (ab) ab.addEventListener('click', (e) => {
-        e.stopPropagation();
-        netSend('dg_claim', { id: NET_ID, seat: -1, name: MY_NAME || '玩家' });
-      });
-      return;
-    }
-    const viewIdx = (netRole === 'client') ? MY_SEAT : currentPlayerIndex;
-    const cp = players[viewIdx];
+    const cp = players[currentPlayerIndex];
     const card = cp.hand[cardIndex];
     if (!card) return;
 
@@ -1124,7 +951,6 @@
   }
 
   function executePassCard(targetId, claimedType) {
-    if (netRole === 'client') { netSend('dg_action', { kind: 'pass', seat: MY_SEAT, targetId: targetId, claimedType: claimedType }); return; }
     if (!cardInPlay) return;
     const passer = players[cardInPlay.targetPlayerIndex];
     cardInPlay.lastPasserId = passer.id;
@@ -1168,10 +994,20 @@
   /* 拍桌广播：让同一个房间的人一起震 */
   let slamChannel = null;
   function initSlamNet() {
-    initNet();
+    if (!NET_ROOM || typeof openChannel !== 'function') return;
+    try {
+      slamChannel = openChannel((msg) => {
+        if (!msg || msg.type !== 'dg_slam') return;
+        slamTable();
+        const who = (msg.payload && msg.payload.by) ? msg.payload.by : '有人';
+        setLog(`👋 ${who} 拍了桌子！`);
+      });
+    } catch (e) { console.warn('拍桌同步不可用', e); }
   }
   function broadcastSlam() {
-    netSend('dg_slam', { by: MY_NAME || '有人', ts: Date.now() });
+    if (slamChannel) {
+      try { slamChannel.send('dg_slam', { by: MY_NAME || '有人', ts: Date.now() }); } catch (e) {}
+    }
   }
 
   function showSlamButton(ms) {
@@ -1205,7 +1041,6 @@
   }
 
   function handleAccept(believe) {
-    if (netRole === 'client') { netSend('dg_action', { kind: 'accept', seat: MY_SEAT, believe: believe }); return; }
     if (!cardInPlay || gameOver) return;
 
     const actualType = cardInPlay.typeIndex;
@@ -1292,15 +1127,6 @@
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
 
 
 
