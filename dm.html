@@ -1763,6 +1763,7 @@ function checkVirginTrigger() {
   if (rsel) rsel.value = '';
   render();
   broadcastPublicState();
+  afterExecution();
   return true;
 }
 
@@ -1871,6 +1872,15 @@ function addLog(text) {
   state.log.push({ time, text: text.trim() });
   renderLog();
   save();
+}
+
+/* 处决结束后自动进入黑夜（处决会立刻结束当天） */
+function afterExecution() {
+  if (state.phase === 'day') {
+    setTimeout(() => { advanceNight(); }, 400);
+  } else {
+    broadcastPublicState();
+  }
 }
 
 function advanceNight() {
@@ -3104,6 +3114,8 @@ document.addEventListener('DOMContentLoaded', function () {
     addLog(`⚖️ 第 ${nightNo} 天：${voteLine}`);
     showFeedback(feedback, '投票已记录', true);
     render(); broadcastPublicState();
+    /* 处决成立 → 自动入夜 */
+    if (info.passed) afterExecution();
   });
   document.getElementById('voteHistory').addEventListener('click', e => {
     const btn = e.target.closest('button[data-del-vote]');
@@ -3160,6 +3172,8 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
+
+
 
 
 
