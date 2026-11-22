@@ -329,6 +329,12 @@
     box-shadow: 0 6px 0 #1a2a1a, 0 0 14px #f5d74288;
   }
   .pass-target-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a2a1a; }
+  .count-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; justify-content: center; }
+  .count-row span { font-size: 0.72rem; color: #9ab89a; }
+  .count-row select {
+    background: #1a2a1a; color: #d8ecd0; border: 1px solid #4a6a4a;
+    border-radius: 6px; padding: 3px 8px; font-size: 0.78rem; font-family: inherit;
+  }
 </style>
 </head>
 <body>
@@ -339,7 +345,13 @@
   <div class="hand-bar" id="handBar"></div>
   <div class="log-panel">
     <div class="log-text" id="logText">皇家版：翻开皇冠牌会触发惩罚堆抽牌，抽到皇冠则继续抽，直到非皇冠。</div>
-    <button class="reset-btn" id="resetBtn">🔄 新游戏</button>
+    <div class="count-row">
+      <span>人数</span>
+      <select id="countSel">
+        <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+      </select>
+      <button class="reset-btn" id="resetBtn">🔄 新游戏</button>
+    </div>
   </div>
 </div>
 
@@ -355,7 +367,7 @@
     { name: '苍蝇', emoji: '🪰', art: '苍蝇' },
     { name: '蝎子', emoji: '🦂', art: '蝎子' }
   ];
-  const PLAYER_COUNT = 4;
+  let playerCount = 4;   // 4 ~ 8，可调
   const CARD_ART_ROOT = 'dgzl-cards';   // 压缩后的 webp 卡面（约 8KB/张）
 
   function cardImage(typeIndex, variant) {
@@ -395,7 +407,7 @@
     peekTimeout && clearTimeout(peekTimeout);
 
     players = [];
-    for (let i = 0; i < PLAYER_COUNT; i++) {
+    for (let i = 0; i < playerCount; i++) {
       players.push({ id: i, name: `玩家${i + 1}`, hand: [], faceUp: [] });
     }
 
@@ -406,8 +418,8 @@
     }
     shuffle(dealDeck);
 
-    const base = Math.floor(dealDeck.length / PLAYER_COUNT);
-    let rem = dealDeck.length % PLAYER_COUNT;
+    const base = Math.floor(dealDeck.length / playerCount);
+    let rem = dealDeck.length % playerCount;
     let ci = 0;
     players.forEach((p, idx) => {
       const n = base + (idx < rem ? 1 : 0);
@@ -442,6 +454,17 @@
       const seat = document.createElement('div');
       seat.className = 'seat';
       seat.dataset.id = idx;
+      /* 按人数算角度，均匀分布在圆桌边缘 */
+      {
+        const total = players.length;
+        const ang = -Math.PI / 2 + idx * (2 * Math.PI / total);
+        const rx = total >= 7 ? 36 : (total >= 5 ? 38 : 37);
+        const ry = total >= 7 ? 36 : (total >= 5 ? 38 : 37);
+        seat.style.left = (50 + Math.cos(ang) * rx).toFixed(2) + '%';
+        seat.style.top  = (50 + Math.sin(ang) * ry).toFixed(2) + '%';
+        seat.style.width = (total >= 8 ? '17%' : total >= 7 ? '18%' : total >= 6 ? '20%' : '23%');
+        seat.style.minWidth = (total >= 7 ? '78px' : '92px');
+      }
       if (!gameOver && idx === currentPlayerIndex && !cardInPlay) seat.classList.add('active');
       if (!gameOver && cardInPlay && cardInPlay.targetPlayerIndex === idx) seat.classList.add('targetable');
 
@@ -910,8 +933,17 @@
   }
 
   document.getElementById('resetBtn').addEventListener('click', initGame);
+  document.getElementById('countSel').addEventListener('change', (e) => {
+    const n = Number(e.target.value) || 4;
+    if (n !== playerCount) {
+      playerCount = n;
+      initGame();
+    }
+  });
   initGame();
 })();
 </script>
 </body>
 </html>
+
+
