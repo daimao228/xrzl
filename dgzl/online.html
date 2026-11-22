@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -94,6 +94,10 @@
   .face-badge.crown { background: #f5d742; border-color: #a68b5b; }
   .face-badge.penalty { background: #d88a6a; border-color: #8a4a3a; }
   .seat.empty-badges span.seat-empty { color: #6a8a6a; font-size: 0.58rem; }
+  .seat-face-up.viewable { cursor: pointer; border-radius: 9px; padding: 2px; transition: background .12s, box-shadow .12s; }
+  .seat-face-up.viewable:hover, .seat-face-up.viewable:active {
+    background: rgba(245,215,66,.14); box-shadow: 0 0 0 2px rgba(245,215,66,.55);
+  }
 
   .center-area {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
@@ -253,6 +257,33 @@
     max-width: 92vw; max-height: 90vh; overflow: auto; text-align: center;
   }
   .modal h3 { color: #f5e6b0; margin: 0 0 14px 0; font-size: 1rem; }
+  /* 点开别人面前的牌：跟手牌一样的大卡 */
+  .card-view-grid {
+    display: flex; flex-wrap: wrap; gap: 9px; justify-content: center;
+    max-height: 58vh; overflow: auto; padding: 2px; margin-bottom: 12px;
+  }
+  .vcard {
+    position: relative; width: 86px; height: 120px; border-radius: 9px; overflow: hidden;
+    border: 2px solid #4a3a26; background: linear-gradient(165deg, #fefcf3, #f3ecd8);
+    box-shadow: 0 4px 0 #1a1a1a, 0 0 0 1px #d4b87a;
+  }
+  .vcard img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .vcard.crown { border-color: #b89b4a; background: linear-gradient(165deg, #fffbea, #f5e6b0); }
+  .vcard.penalty { box-shadow: 0 4px 0 #1a1a1a, 0 0 0 2px #d88a6a; }
+  .vcard .vc-name {
+    position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%);
+    font-size: 0.55rem; font-weight: 800; background: rgba(212,194,155,.95);
+    padding: 1px 6px; border-radius: 9px; border: 1px solid #7a6a4a; white-space: nowrap;
+  }
+  .vcard .vc-pen {
+    position: absolute; top: 4px; left: 4px; font-size: 0.6rem; font-weight: 800;
+    background: #d88a6a; color: #2a1a0a; border: 1px solid #8a4a3a; border-radius: 8px; padding: 0 5px;
+  }
+  .vcard .vc-flag {
+    position: absolute; top: 2px; right: 4px; font-size: 0.85rem;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.45));
+  }
+  .card-view-empty { color: #9ab89a; font-size: 0.85rem; padding: 16px 4px 20px; }
   .bug-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
   .bug-option {
     background: #e6dbb0; border: 2px solid #7a6a4a; border-radius: 12px;
@@ -338,6 +369,7 @@
     <span id="netOnline">在线 0</span>
     <span class="dot">·</span>
     <span id="netSeat">未入座</span>
+    <button class="mini-btn" id="btnSound" title="拍桌音效开关">🔊 音效</button>
     <button class="mini-btn" id="btnRename">✏️ 改名</button>
   </div>
 
@@ -413,6 +445,7 @@
   var netSeatEl = document.getElementById('netSeat');
   var countSel = document.getElementById('countSel');
   var slamBtn = document.getElementById('slamBtn');
+  var soundBtn = document.getElementById('btnSound');
   var resetBtn = document.getElementById('resetBtn');
 
   /* ============================ 小工具 ============================ */
@@ -1252,6 +1285,73 @@
     return out || '<span class="seat-empty">—</span>';
   }
 
+  /* 点开某个座位面前的牌（发牌区）：和手牌一样的大卡，罚牌 / 皇冠都有标记 */
+  function openSeatCards(seat) {
+    if (!G || !G.players || !G.players[seat]) return;
+    var p = G.players[seat];
+    var cards = (p.faceUp || []).slice();
+    var penaltyN = 0;
+    cards.forEach(function (c) { if (c.isPenalty) penaltyN++; });
+
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    var modal = document.createElement('div');
+    modal.className = 'modal';
+
+    var title = nameOf(seat) + ' 面前的牌 · ' + cards.length + ' 张' +
+      (penaltyN ? '（罚 ' + penaltyN + '）' : '');
+    modal.innerHTML = '<h3>' + esc(title) + '</h3>';
+
+    if (!cards.length) {
+      var empty = document.createElement('div');
+      empty.className = 'card-view-empty';
+      empty.textContent = '还没收下任何牌';
+      modal.appendChild(empty);
+    } else {
+      /* 同一种虫排在一起，皇冠排前面 */
+      cards.sort(function (a, b) {
+        if (a.typeIndex !== b.typeIndex) return a.typeIndex - b.typeIndex;
+        return (b.isCrown ? 1 : 0) - (a.isCrown ? 1 : 0);
+      });
+      var grid = document.createElement('div');
+      grid.className = 'card-view-grid';
+      cards.forEach(function (c) {
+        var b = BUG_TYPES[c.typeIndex] || BUG_TYPES[0];
+        var el = document.createElement('div');
+        el.className = 'vcard' + (c.isCrown ? ' crown' : '') + (c.isPenalty ? ' penalty' : '');
+        var marks = (c.isPenalty ? '<span class="vc-pen">罚</span>' : '') +
+                    (c.isCrown ? '<span class="vc-flag">👑</span>' : '');
+        el.innerHTML =
+          '<img src="' + cardImage(c.typeIndex, c.variant) + '" alt="' + esc(b.name) + '">' +
+          marks +
+          '<div class="vc-name">' + b.emoji + esc(b.name) + '</div>';
+        grid.appendChild(el);
+      });
+      modal.appendChild(grid);
+    }
+
+    var close = document.createElement('button');
+    close.className = 'cancel-btn';
+    close.textContent = '关闭';
+    close.addEventListener('click', function () { overlay.remove(); });
+    modal.appendChild(close);
+
+    overlay.appendChild(modal);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+
+  /* 发牌区点击（座位每次重绘都换元素，所以用事件委托） */
+  tableArea.addEventListener('click', function (e) {
+    var t = e.target;
+    var cell = t && t.closest ? t.closest('.seat-face-up') : null;
+    if (!cell || !cell.classList.contains('viewable')) return;
+    var seatEl = cell.closest ? cell.closest('.seat') : null;
+    if (!seatEl) return;
+    var seat = parseInt(seatEl.dataset.seat, 10);
+    if (!isNaN(seat)) openSeatCards(seat);
+  });
+
   function positionSeat(el, idx, total) {
     var ang = -Math.PI / 2 + idx * (2 * Math.PI / total);
     var r = total >= 7 ? 36 : (total >= 5 ? 38 : 37);
@@ -1300,7 +1400,10 @@
       if (pl) {
         html += '<div class="seat-hand-count">手牌 ' + pl.count + '</div>';
       }
-      html += '<div class="seat-face-up' + (pl && !pl.faceUp.length ? ' empty-badges' : '') + '">' + seatBadges(pl) + '</div>';
+      var canView = owner && pl && pl.faceUp.length > 0;
+      html += '<div class="seat-face-up' + (canView ? ' viewable' : '') +
+        (pl && !pl.faceUp.length ? ' empty-badges' : '') + '"' +
+        (canView ? ' title="点开看牌"' : '') + '>' + seatBadges(pl) + '</div>';
       el.innerHTML = html;
 
       if (!owner) {
@@ -1753,8 +1856,90 @@
     renderAll();
   }
 
+  /* ============================ 拍桌音效（Web Audio 合成，不用音频文件） ============================ */
+  var audioCtx = null;
+  var audioUnlocked = false;
+  var soundOn = (function () {
+    try { return localStorage.getItem('dgzl_sound') !== '0'; } catch (e) { return true; }
+  })();
+
+  function ensureAudio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) {
+      try { audioCtx = new AC(); } catch (e) { return null; }
+    }
+    if (audioCtx.state === 'suspended') { try { audioCtx.resume(); } catch (e) {} }
+    return audioCtx;
+  }
+
+  /* 浏览器要求先有用户手势才能出声：第一次点屏幕时把音频解锁 */
+  function unlockAudio() {
+    audioUnlocked = true;
+    ensureAudio();
+  }
+
+  function playSlamSound() {
+    if (!soundOn) return;
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t = ctx.currentTime + 0.005;
+    var out = ctx.createGain();
+    out.gain.value = 0.55;               // 总音量，手机上不炸耳
+    out.connect(ctx.destination);
+
+    /* 1) 手掌接触桌面的“啪”：一小段带通噪声 */
+    var dur = 0.13;
+    var n = Math.floor(ctx.sampleRate * dur);
+    var buf = ctx.createBuffer(1, n, ctx.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) {
+      var p = i / n;
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - p, 3);
+    }
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    var bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1100 + Math.random() * 700;
+    bp.Q.value = 0.8;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.7, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(bp); bp.connect(ng); ng.connect(out);
+    src.start(t); src.stop(t + dur);
+
+    /* 2) 砸下去的低频“咚” */
+    var osc = ctx.createOscillator();
+    var og = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150 + Math.random() * 50, t);
+    osc.frequency.exponentialRampToValueAtTime(55, t + 0.16);
+    og.gain.setValueAtTime(0.75, t);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.connect(og); og.connect(out);
+    osc.start(t); osc.stop(t + 0.22);
+
+    /* 3) 桌面的木头味 */
+    var osc2 = ctx.createOscillator();
+    var g2 = ctx.createGain();
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(420 + Math.random() * 80, t);
+    osc2.frequency.exponentialRampToValueAtTime(180, t + 0.1);
+    g2.gain.setValueAtTime(0.22, t);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    osc2.connect(g2); g2.connect(out);
+    osc2.start(t); osc2.stop(t + 0.14);
+  }
+
+  function syncSoundBtn() {
+    if (!soundBtn) return;
+    soundBtn.textContent = soundOn ? '🔊 音效' : '🔇 静音';
+  }
+
   /* ============================ 拍桌 ============================ */
   function slamTable() {
+    playSlamSound();
     var hand = document.createElement('div');
     hand.className = 'slam-hand';
     hand.textContent = '🖐️';
@@ -1843,6 +2028,18 @@
     slamBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       broadcastSlam();
+    });
+
+    /* 音效：第一次碰屏幕解锁，后面的拍桌（含别人拍的）才出得了声 */
+    syncSoundBtn();
+    document.addEventListener('pointerdown', unlockAudio, { once: true });
+    soundBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      unlockAudio();
+      soundOn = !soundOn;
+      try { localStorage.setItem('dgzl_sound', soundOn ? '1' : '0'); } catch (err) {}
+      syncSoundBtn();
+      if (soundOn) playSlamSound();     // 打开时给个试听
     });
 
     document.getElementById('btnRename').addEventListener('click', function (e) {
