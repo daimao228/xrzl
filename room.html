@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>房间联调 · 座位同步</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; min-height:100vh; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+         background:#0d1210; color:#e8f0e6; padding:16px; }
+  .wrap { width:min(96vw,560px); margin:0 auto; }
+  h1 { font-size:17px; letter-spacing:3px; text-align:center; color:#8fd6a8; margin:0 0 4px; }
+  .sub { text-align:center; font-size:11px; color:#6f8b78; margin-bottom:14px; }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; font-size:12px;
+         background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12);
+         border-radius:10px; padding:8px 10px; margin-bottom:12px; }
+  .bar span { color:#a8c4b0; }
+  .bar b { color:#e8f0e6; }
+  .seats { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; }
+  .seat { padding:12px 10px; border-radius:12px; text-align:center; cursor:pointer;
+          background:rgba(255,255,255,.06); border:2px solid rgba(255,255,255,.12); }
+  .seat .no { font-size:11px; color:#7f9a88; }
+  .seat .nm { font-size:14px; font-weight:700; margin-top:4px; }
+  .seat.free { border-style:dashed; color:#8ea; }
+  .seat.mine { border-color:#7ad19a; box-shadow:0 0 14px rgba(122,209,154,.45); }
+  .seat.other { border-color:#5b7fa8; }
+  .log { margin-top:14px; font-size:11px; color:#7f9a88; line-height:1.7; max-height:120px; overflow:auto; }
+  .ver { text-align:center; font-size:10px; color:#4d5f53; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>房间联调</h1>
+  <div class="sub">只测「在线 + 座位同步」，不含牌局</div>
+
+  <div class="bar">
+    <span>房间 <b id="roomLabel">—</b></span>
+    <span>我 <b id="meLabel">—</b></span>
+    <span>在线 <b id="onlineLabel">0</b></span>
+    <span>连接 <b id="connLabel">—</b></span>
+  </div>
+
+  <div class="seats" id="seats"></div>
+  <div class="log" id="log"></div>
+  <div class="ver" id="verLine"></div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script src="shared.js"></script>
+<script>
+window.APP_VERSION = 'room-test-1';
+(function () {
+  const SEAT_COUNT = 8;
+  /* 身份：同一个标签页保持自己的 id，刷新会换新 id（方便测试） */
+  let meId = sessionStorage.getItem('room_test_id');
+  if (!meId) { meId = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6); sessionStorage.setItem('room_test_id', meId); }
+
+  let meName = '';
+  try {
+    const l = JSON.parse(localStorage.getItem('botc_lobby') || 'null');
+    if (l && l.name) meName = l.name;
+  } catch (e) {}
+  if (!meName) meName = '玩家' + meId.slice(-4);
+
+  const room = (function () {
+    const h = String(location.hash || '').replace(/^#/, '');
+    if (h.indexOf('room=') === 0) return decodeURIComponent(h.slice(5)).toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'lobby';
+    try { return localStorage.getItem('botc_last_room') || 'lobby'; } catch (e) { return 'lobby'; }
+  })();
+
+  const peers = new Map();   // id -> { name, seat, ts }
+  let ch = null;
+
+  function log(msg) {
+    const el = document.getElementById('log');
+    el.textContent = ('[' + new Date().toLocaleTimeString() + '] ' + msg + '\n') + el.textContent;
+    if (el.textContent.length > 4000) el.textContent = el.textContent.slice(0, 4000);
+  }
+
+  /* 每个 id 只保留一条记录：同一座位冲突时，id 小的赢 */
+  function claim(seat) {
+    peers.set(meId, { name: meName, seat: seat, ts: Date.now() });
+    if (ch) ch.send('rt_claim', { id: meId, name: meName, seat: seat, ts: Date.now() });
+    log('我坐到 ' + (seat + 1) + ' 号位');
+    render();
+    beacon();
+  }
+  function beacon() {
+    if (!ch) return;
+    const me = peers.get(meId) || {};
+    ch.send('rt_here', { id: meId, name: meName, seat: (typeof me.seat === 'number' ? me.seat : -1), ts: Date.now() });
+  }
+
+  function render() {
+    const box = document.getElementById('seats');
+    box.innerHTML = '';
+    /* 座位归属：同一座位多人时，id 字典序最小的人占着 */
+    const owner = new Array(SEAT_COUNT).fill(null);
+    const now = Date.now();
+    [...peers.entries()].forEach(([id, p]) => {
+      if (now - p.ts > 15000) { peers.delete(id); return; }
+      const s = Number(p.seat);
+      if (s < 0 || s >= SEAT_COUNT) return;
+      if (!owner[s] || id < owner[s].id) owner[s] = { id: id, name: p.name };
+    });
+
+    for (let i = 0; i < SEAT_COUNT; i++) {
+      const el = document.createElement('div');
+      const mine = owner[i] && owner[i].id === meId;
+      el.className = 'seat ' + (owner[i] ? (mine ? 'mine' : 'other') : 'free');
+      el.innerHTML = '<div class="no">' + (i + 1) + ' 号位</div>' +
+        '<div class="nm">' + (owner[i] ? escapeHtml(owner[i].name) : '空位 · 点击入座') + '</div>';
+      if (!owner[i] || mine) el.addEventListener('click', () => claim(i));
+      box.appendChild(el);
+    }
+
+    let online = 0;
+    peers.forEach(p => { if (now - p.ts <= 15000) online++; });
+    document.getElementById('onlineLabel').textContent = String(online);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  document.getElementById('roomLabel').textContent = room;
+  document.getElementById('meLabel').textContent = meName;
+  document.getElementById('verLine').textContent = window.APP_VERSION + ' · ' + location.pathname;
+
+  try {
+    ch = openChannel((msg) => {
+      if (!msg || !msg.type) return;
+      const p = msg.payload || {};
+      if (msg.type === 'rt_claim' || msg.type === 'rt_here') {
+        if (!p.id || p.id === meId) return;
+        const old = peers.get(p.id) || {};
+        const seat = (typeof p.seat === 'number') ? p.seat : (typeof old.seat === 'number' ? old.seat : -1);
+        peers.set(p.id, { name: p.name || old.name || '玩家', seat: seat, ts: Date.now() });
+        render();
+      } else if (msg.type === 'rt_bye') {
+        if (p.id && p.id !== meId) { peers.delete(p.id); render(); }
+      } else if (msg.type === '__connected__') {
+        document.getElementById('connLabel').textContent = '已连接';
+        beacon();
+      }
+    });
+  } catch (e) {
+    document.getElementById('connLabel').textContent = '连接失败';
+    log('openChannel 失败：' + e.message);
+  }
+
+  beacon();
+  setInterval(beacon, 4000);
+  setInterval(render, 4000);
+  render();
+  window.addEventListener('beforeunload', () => { if (ch) ch.send('rt_bye', { id: meId }); });
+})();
+</script>
+</body>
+</html>
