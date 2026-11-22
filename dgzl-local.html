@@ -1,0 +1,1139 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>德国蟑螂 · 皇家圆桌拖拽版</title>
+<style>
+  * { box-sizing: border-box; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; user-select: none; }
+  body {
+    margin: 0; min-height: 100vh;
+    background: radial-gradient(circle at 50% 30%, #1a2a1a 0%, #0a120a 100%);
+    display: flex; justify-content: center; align-items: center;
+    padding: 12px; touch-action: manipulation;
+  }
+  .game-wrapper {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    width: min(96vw, 820px);
+  }
+  .table-area {
+    position: relative; width: 100%; aspect-ratio: 1/1; max-width: 660px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #3e5e3e 0%, #2a3e2a 60%, #1a2a1a 100%);
+    border: 6px solid #5a7a5a;
+    box-shadow: inset 0 0 80px #0a120a, 0 20px 50px rgba(0,0,0,0.7), 0 0 0 3px #2a3e2a;
+  }
+  .seat {
+    position: absolute; transform: translate(-50%, -50%);
+    width: 25%; min-width: 106px;
+    background: rgba(45,70,45,0.95);
+    border: 2px solid #6b8e6b; border-radius: 18px;
+    padding: 8px 6px;
+    box-shadow: 0 6px 0 #1a2a1a, inset 0 0 12px rgba(0,0,0,0.4);
+    transition: all 0.15s ease;
+    text-align: center; z-index: 2;
+  }
+  .seat[data-id="0"] { left: 50%; top: 13%; }
+  .seat[data-id="1"] { left: 87%; top: 50%; }
+  .seat[data-id="2"] { left: 50%; top: 87%; }
+  .seat[data-id="3"] { left: 13%; top: 50%; }
+  .seat.active {
+    border-color: #f5d742;
+    box-shadow: 0 0 20px #f5d74288, 0 6px 0 #1a2a1a;
+    background: rgba(70,105,70,0.95);
+  }
+  .seat.drop-highlight {
+    border-color: #ffae42;
+    background: rgba(95,125,75,0.98);
+    box-shadow: 0 0 28px #ffae42cc, 0 6px 0 #1a2a1a;
+    transform: translate(-50%, -50%) scale(1.07);
+    z-index: 6;
+  }
+  .seat.targetable {
+    border: 2px dashed #ffae42;
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 8px #ffae4266, 0 6px 0 #1a2a1a; }
+    50% { box-shadow: 0 0 22px #ffae42cc, 0 6px 0 #1a2a1a; }
+  }
+  .seat-name {
+    font-weight: 800; color: #fff3cf; font-size: 0.9rem;
+    margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .seat-hand-count {
+    display: inline-block; background: #1a2a1a; color: #c8e0c0;
+    font-size: 0.66rem; padding: 1px 8px; border-radius: 20px; margin-bottom: 4px;
+  }
+  .seat-face-up {
+    display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; min-height: 20px;
+  }
+  .face-badge {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: #e6dbb0; color: #1e2a1e; font-size: 0.6rem; font-weight: 700;
+    padding: 1px 5px 1px 2px; border-radius: 10px; border: 1px solid #7a6a4a; white-space: nowrap;
+  }
+  .face-badge img {
+    width: 18px; height: 26px; object-fit: cover;
+    border-radius: 3px; display: block;
+  }
+  .face-badge.crown { background: #f5d742; border-color: #a68b5b; }
+  .face-badge.penalty { background: #d88a6a; border-color: #8a4a3a; }
+
+  .center-area {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 7px;
+    z-index: 1; width: 190px;
+  }
+  .center-card {
+    width: 86px; height: 120px; border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 3px solid #b39b6b;
+    box-shadow: 0 6px 0 #1a1a1a, 0 0 0 2px #d4b87a;
+    transition: transform 0.1s, box-shadow 0.1s;
+    user-select: none;
+  }
+  .center-card.card-back {
+    background: repeating-linear-gradient(45deg, #3d5e3d, #3d5e3d 8px, #2e4a2e 8px, #2e4a2e 16px);
+    color: #eee7d0; font-size: 2rem; font-weight: bold; text-shadow: 2px 2px 0 #1e2a1e;
+  }
+  .center-card.draggable { cursor: grab; touch-action: none; }
+  .center-card.draggable:active { cursor: grabbing; }
+  .center-card.draggable:hover { transform: translateY(-4px); box-shadow: 0 10px 0 #1a1a1a, 0 0 0 2px #d4b87a; }
+  .center-placeholder {
+    width: 86px; height: 120px; border-radius: 12px;
+    border: 2px dashed #5a7a5a;
+    display: flex; align-items: center; justify-content: center;
+    color: #6a8a6a; font-size: 0.7rem; text-align: center; padding: 8px;
+  }
+  .center-claim {
+    background: rgba(20,35,20,0.92); color: #ffecb3;
+    font-size: 0.68rem; padding: 4px 10px; border-radius: 18px;
+    text-align: center; max-width: 180px; border: 1px solid #b8a86b; line-height: 1.3;
+  }
+  .penalty-stack-info {
+    background: rgba(60,35,25,0.9); color: #ffccaa;
+    font-size: 0.62rem; padding: 2px 10px; border-radius: 14px;
+    border: 1px solid #d88a6a;
+  }
+  .peek-btn, .pass-btn {
+    background: #b39b6b; color: #1e2a1e; border: none;
+    padding: 3px 12px; border-radius: 20px; font-weight: 700; font-size: 0.66rem;
+    cursor: pointer; box-shadow: 0 3px 0 #6a5a3a;
+  }
+  .pass-btn { background: #c9b37e; box-shadow: 0 3px 0 #7a6a4a; }
+  .peek-btn:active, .pass-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #6a5a3a; }
+  .peek-info {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    background: rgba(20,35,20,0.96); color: #f5d742;
+    padding: 5px 10px; border-radius: 12px; font-size: 0.68rem; font-weight: 700;
+    border: 1px solid #f5d742; text-align: center; white-space: nowrap;
+  }
+  .peek-info img {
+    width: 62px; height: 89px; object-fit: cover;
+    border-radius: 6px; display: block;
+  }
+  .pass-actions { display: flex; gap: 7px; margin-top: 2px; flex-wrap: wrap; justify-content: center; }
+  .pass-actions button {
+    padding: 6px 14px; border-radius: 24px; border: none;
+    font-weight: 700; font-size: 0.72rem; cursor: pointer;
+    transition: 0.08s; white-space: nowrap;
+  }
+  .believe-btn { background: #6f9e6f; color: #f0f7e0; box-shadow: 0 3px 0 #3a553a; }
+  .doubt-btn { background: #d88a6a; color: #2a1a0a; box-shadow: 0 3px 0 #8a4a3a; }
+  .pass-actions button:active { transform: translateY(2px); box-shadow: 0 1px 0 #333; }
+
+  /* ===== 手牌区：斗地主式横向叠放 ===== */
+  .hand-bar {
+    width: 100%; max-width: 820px; min-height: 180px;
+    background: rgba(25,40,25,0.88);
+    border: 2px solid #5a7a5a; border-radius: 20px;
+    padding: 38px 22px 22px;
+    display: flex; flex-wrap: wrap;
+    gap: 20px 30px;
+    justify-content: center; align-items: flex-end;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    overflow: visible;
+  }
+  .hand-group {
+    display: flex;
+    align-items: flex-end;
+    position: relative;
+    padding-top: 30px;
+    padding-right: 4px;
+  }
+  .hand-card {
+    width: 84px;
+    height: 120px;
+    flex-shrink: 0;
+    margin-left: -44px;
+    background: linear-gradient(165deg, #fefcf3 0%, #f3ecd8 100%);
+    border-radius: 9px;
+    border: 2px solid #4a3a26;
+    box-shadow: -3px 0 6px rgba(0,0,0,0.45), 0 4px 0 #1a1a1a, 0 0 0 1px #d4b87a;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 0;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+    transition: transform 0.13s ease, box-shadow 0.13s ease;
+    color: #1e2a1e;
+    position: relative;
+    z-index: 1;
+  }
+  .hand-group .hand-card:first-child {
+    margin-left: 0;
+  }
+  .hand-card:hover {
+    transform: translateY(-30px) scale(1.07);
+    box-shadow: 0 22px 28px rgba(0,0,0,0.55), 0 0 0 3px #f5d742, 0 0 32px #f5d742aa;
+    z-index: 80;
+  }
+  .hand-card:active { cursor: grabbing; }
+  .hand-card.crown-card {
+    background: linear-gradient(165deg, #fffbea 0%, #f5e6b0 100%);
+    border-color: #b89b4a;
+  }
+  .hand-card.crown-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 6px;
+    border-radius: 8px 0 0 8px;
+    background: linear-gradient(#f5d742, #b89b4a);
+  }
+  .hand-card.crown-card::after {
+    content: '👑';
+    position: absolute;
+    top: 3px; right: 4px;
+    font-size: 0.95rem;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45));
+  }
+  .hand-card .card-art {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 7px;
+    pointer-events: none;
+  }
+  .hand-card .card-emoji {
+    font-size: 1.8rem;
+    line-height: 1;
+    margin-top: 2px;
+  }
+  .hand-card .card-name {
+    position: absolute;
+    left: 50%;
+    bottom: 5px;
+    transform: translateX(-50%);
+    font-size: 0.56rem; font-weight: 800;
+    background: rgba(212, 194, 155, 0.94);
+    padding: 1px 6px;
+    border-radius: 9px;
+    border: 1px solid #7a6a4a;
+    white-space: nowrap;
+    max-width: 92%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 2;
+  }
+  .hand-bar-hint { color: #8fb08f; font-size: 0.9rem; text-align: center; font-style: italic; padding: 20px; }
+
+  .log-panel {
+    width: 100%; max-width: 820px;
+    background: rgba(20,30,20,0.92);
+    border: 1px solid #4a6a4a; border-radius: 14px;
+    padding: 8px 16px; color: #c8e0c0; font-size: 0.82rem;
+    min-height: 42px; display: flex; align-items: center; gap: 12px;
+  }
+  .log-text { flex: 1; line-height: 1.35; }
+  .reset-btn {
+    background: #6b8e6b; color: #f0f7e0; border: none;
+    padding: 8px 18px; border-radius: 30px; font-weight: 700;
+    cursor: pointer; box-shadow: 0 4px 0 #3a553a; font-size: 0.78rem; flex-shrink: 0;
+  }
+  .reset-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #3a553a; }
+
+  .game-over-banner {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    background: rgba(20,35,20,0.96); border: 3px solid #f5d742;
+    border-radius: 20px; padding: 18px 26px; color: #f5d742;
+    font-weight: 800; font-size: 1rem; text-align: center;
+    z-index: 10; box-shadow: 0 0 40px #f5d74266; max-width: 85%;
+    line-height: 1.5;
+  }
+
+  .drag-clone {
+    position: fixed; pointer-events: none; z-index: 9999;
+    transform: rotate(-5deg) scale(1.12);
+    opacity: 0.96;
+    box-shadow: 0 24px 34px rgba(0,0,0,0.75), 0 0 0 3px #f5d742, 0 0 30px #f5d742aa !important;
+    filter: brightness(1.08);
+  }
+  .drag-clone::before, .drag-clone::after { display: none !important; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(3px);
+  }
+  .modal {
+    background: #2e4a2e; border: 3px solid #6b8e6b; border-radius: 24px;
+    padding: 20px 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    max-width: 90vw; text-align: center;
+  }
+  .modal h3 { color: #f5e6b0; margin: 0 0 16px 0; font-size: 1.05rem; }
+  .bug-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin-bottom: 14px;
+  }
+  .bug-option {
+    background: #e6dbb0; border: 2px solid #7a6a4a; border-radius: 12px;
+    padding: 8px 6px; cursor: pointer; font-weight: 700; color: #1e2a1e;
+    font-size: 0.72rem; line-height: 1.4; transition: 0.1s;
+    box-shadow: 0 3px 0 #a68b5b;
+  }
+  .bug-option:hover { background: #f5e6b0; transform: translateY(-2px); box-shadow: 0 5px 0 #a68b5b; }
+  .bug-option:active { transform: translateY(2px); box-shadow: 0 1px 0 #a68b5b; }
+  .bug-option .bug-thumb {
+    display: block; width: 100%; aspect-ratio: 7 / 10;
+    object-fit: cover; border-radius: 7px;
+    border: 1px solid #7a6a4a; margin-bottom: 4px;
+  }
+  .bug-option .bug-label { display: block; font-size: 0.68rem; line-height: 1.2; }
+  .cancel-btn {
+    background: #6b8e6b; color: #f0f7e0; border: none;
+    padding: 8px 24px; border-radius: 30px; font-weight: 700;
+    cursor: pointer; box-shadow: 0 4px 0 #3a553a;
+  }
+  .cancel-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #3a553a; }
+
+  .pass-target-grid {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    margin-bottom: 16px;
+  }
+  .pass-target-btn {
+    background: rgba(45,70,45,0.95); border: 2px solid #6b8e6b;
+    border-radius: 14px; padding: 8px 14px; cursor: pointer;
+    font-weight: 700; color: #fff3cf; font-size: 0.82rem;
+    box-shadow: 0 4px 0 #1a2a1a; transition: 0.1s;
+    min-width: 90px;
+  }
+  .pass-target-btn:hover {
+    background: rgba(70,105,70,0.98); border-color: #f5d742;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #1a2a1a, 0 0 14px #f5d74288;
+  }
+  .pass-target-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a2a1a; }
+  .slam-btn {
+    position: fixed; right: 16px; bottom: 22px; z-index: 50;
+    padding: 12px 18px; border-radius: 30px; cursor: pointer;
+    font-family: inherit; font-size: 15px; font-weight: 800;
+    color: #1a1408; background: linear-gradient(180deg, #ffd75e, #d9a520);
+    border: 2px solid #f5d742; box-shadow: 0 6px 18px rgba(0,0,0,.45);
+    animation: slamBtnPulse 1s ease-in-out infinite;
+  }
+  .slam-btn.hidden { display: none; }
+  @keyframes slamBtnPulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  .slam-hand {
+    position: fixed; left: 50%; top: 50%; z-index: 90; pointer-events: none;
+    font-size: 120px; transform-origin: 50% 90%;
+    animation: slamHand .5s cubic-bezier(.3,.9,.4,1) forwards;
+    filter: drop-shadow(0 12px 18px rgba(0,0,0,.55));
+  }
+  @keyframes slamHand {
+    0%   { transform: translate(-50%, -260%) rotate(-30deg) scale(1.7); opacity: 0; }
+    45%  { transform: translate(-50%, -70%) rotate(-6deg) scale(1.25); opacity: 1; }
+    55%  { transform: translate(-50%, -46%) rotate(4deg) scale(1); opacity: 1; }
+    75%  { transform: translate(-50%, -60%) rotate(2deg) scale(1.04); opacity: .95; }
+    100% { transform: translate(-50%, -90%) rotate(0deg) scale(1); opacity: 0; }
+  }
+  .table-area.shake { animation: tableShake .5s cubic-bezier(.36,.07,.19,.97); }
+  @keyframes tableShake {
+    0%,100% { transform: translate(0,0) rotate(0); }
+    12% { transform: translate(-7px,5px) rotate(-1.1deg); }
+    25% { transform: translate(6px,-6px) rotate(1deg); }
+    38% { transform: translate(-5px,-4px) rotate(-.8deg); }
+    52% { transform: translate(5px,5px) rotate(.7deg); }
+    68% { transform: translate(-3px,3px) rotate(-.4deg); }
+    84% { transform: translate(2px,-2px) rotate(.2deg); }
+  }
+  .table-area::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  }
+  .table-area.slam-flash::after {
+    background: radial-gradient(circle, rgba(255,240,180,.55) 0%, rgba(255,215,90,.18) 35%, transparent 62%);
+    animation: slamFlash .45s ease-out forwards;
+  }
+  @keyframes slamFlash { from { opacity: 1; } to { opacity: 0; } }
+
+  .net-bar {
+    display: flex; align-items: center; gap: 8px; justify-content: center;
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+    border-radius: 20px; padding: 5px 14px; font-size: 0.75rem; color: #cfe0c8;
+  }
+  .net-bar .dot { color: #56705a; }
+  .seat.you { border-color: #7ad19a; box-shadow: 0 0 14px rgba(122,209,154,.5), 0 6px 0 #1a2a1a; }
+  .seat-you-badge {
+    display: inline-block; margin-left: 4px; font-size: 0.58rem; font-weight: 700;
+    background: #2e7d5b; color: #eafff2; border-radius: 8px; padding: 0 5px; vertical-align: 2px;
+  }
+  .count-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; justify-content: center; }
+  .count-row span { font-size: 0.72rem; color: #9ab89a; }
+  .count-row select {
+    background: #1a2a1a; color: #d8ecd0; border: 1px solid #4a6a4a;
+    border-radius: 6px; padding: 3px 8px; font-size: 0.78rem; font-family: inherit;
+  }
+</style>
+</head>
+<body>
+<div class="game-wrapper">
+  <div class="net-bar" id="netBar">
+    <span id="netRoom">房间 —</span>
+    <span class="dot">·</span>
+    <span id="netMe">你：—</span>
+  </div>
+  <div class="table-area" id="tableArea">
+    <div class="center-area" id="centerArea"></div>
+  </div>
+  <div class="hand-bar" id="handBar"></div>
+  <button class="slam-btn hidden" id="slamBtn">👋 拍桌</button>
+  <div class="log-panel">
+    <div class="log-text" id="logText">皇家版：翻开皇冠牌会触发惩罚堆抽牌，抽到皇冠则继续抽，直到非皇冠。</div>
+    <div class="count-row">
+      <span>人数</span>
+      <select id="countSel">
+        <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+      </select>
+      <button class="reset-btn" id="resetBtn">🔄 新游戏</button>
+    </div>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script src="shared.js"></script>
+<script>
+(function() {
+  const BUG_TYPES = [
+    { name: '蟑螂', emoji: '🪳', art: '蟑螂' },
+    { name: '臭虫', emoji: '🪲', art: '臭虫' },
+    { name: '蜘蛛', emoji: '🕷️', art: '蜘蛛' },
+    { name: '蛤蟆', emoji: '🐸', art: '蟾蜍' },
+    { name: '蝙蝠', emoji: '🦇', art: '蝙蝠' },
+    { name: '老鼠', emoji: '🐭', art: '老鼠' },
+    { name: '苍蝇', emoji: '🪰', art: '苍蝇' },
+    { name: '蝎子', emoji: '🦂', art: '蝎子' }
+  ];
+  let playerCount = 4;   // 4 ~ 8，可调
+  const YOU_BADGE = '<span class="seat-you-badge">你</span>';
+  const CLAIM_CROWN = -1;
+  function claimName(idx) {
+    if (Number(idx) === CLAIM_CROWN) return '皇冠👑';
+    const b = BUG_TYPES[idx];
+    return b ? b.name : '?';
+  }
+
+  /* 从游戏大厅带过来的身份 */
+  const LOBBY_ID = (() => {
+    try { return JSON.parse(localStorage.getItem('botc_lobby') || 'null'); } catch (e) { return null; }
+  })();
+  const MY_NAME = (LOBBY_ID && LOBBY_ID.name) ? String(LOBBY_ID.name).slice(0, 10) : '';
+  const NET_ROOM = (() => {
+    const h = String(location.hash || '').replace(/^#/, '');
+    if (h.indexOf('room=') === 0) return decodeURIComponent(h.slice(5));
+    if (LOBBY_ID && LOBBY_ID.room) return LOBBY_ID.room;
+    try { return localStorage.getItem('botc_last_room') || ''; } catch (e) { return ''; }
+  })();
+  const MY_SEAT = 0;   // 从大厅进来的人默认坐 0 号位（联机后由入座逻辑接管）
+  const CARD_ART_ROOT = 'dgzl-cards';   // 压缩后的 webp 卡面（约 8KB/张）
+
+  function cardImage(typeIndex, variant) {
+    const folder = BUG_TYPES[typeIndex].art;
+    const n = String(((Number(variant) || 0) % 8) + 1).padStart(2, '0');
+    return encodeURI(`${CARD_ART_ROOT}/${folder}/${folder}_${n}.webp`);
+  }
+
+  let players = [];
+  let currentPlayerIndex = 0;
+  let cardInPlay = null;
+  let gameOver = false;
+  let winnerMessage = '';
+  let dragState = null;
+  let peekTimeout = null;
+  let penaltyDeck = [];
+
+  const tableArea = document.getElementById('tableArea');
+  const centerArea = document.getElementById('centerArea');
+  const handBar = document.getElementById('handBar');
+  const logText = document.getElementById('logText');
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  function setLog(msg) { logText.textContent = msg; }
+
+  // ========== 初始化 ==========
+  function initGame() {
+    overrideSeat = null;
+    gameOver = false;
+    winnerMessage = '';
+    dragState = null;
+    peekTimeout && clearTimeout(peekTimeout);
+
+    players = [];
+    for (let i = 0; i < playerCount; i++) {
+      players.push({ id: i, name: (i === MY_SEAT && MY_NAME) ? MY_NAME : `玩家${i + 1}`, hand: [], faceUp: [] });
+    }
+
+    const dealDeck = [];
+    for (let t = 0; t < BUG_TYPES.length; t++) {
+      for (let i = 0; i < 8; i++) dealDeck.push({ typeIndex: t, variant: i, isCrown: false, isPenalty: false });
+      dealDeck.push({ typeIndex: t, variant: 0, isCrown: true, isPenalty: false });
+    }
+    shuffle(dealDeck);
+
+    const base = Math.floor(dealDeck.length / playerCount);
+    let rem = dealDeck.length % playerCount;
+    let ci = 0;
+    players.forEach((p, idx) => {
+      const n = base + (idx < rem ? 1 : 0);
+      p.hand = dealDeck.slice(ci, ci + n);
+      ci += n;
+    });
+
+    penaltyDeck = [];
+    for (let t = 0; t < BUG_TYPES.length; t++) {
+      penaltyDeck.push({ typeIndex: t, variant: 0, isCrown: false, isPenalty: true });
+    }
+    shuffle(penaltyDeck);
+    for (let i = 0; i < 4; i++) penaltyDeck[i].isCrown = true;
+    shuffle(penaltyDeck);
+
+    currentPlayerIndex = 0;
+    cardInPlay = null;
+    renderAll();
+    setLog(`游戏开始！${players[0].name} 先行动。翻开皇冠牌会触发惩罚抽牌（抽到皇冠继续抽）。`);
+  }
+
+  // ========== 渲染 ==========
+  function renderAll() {
+    renderSeats();
+    renderCenter();
+    renderHandBar();
+  }
+
+  function renderSeats() {
+    document.querySelectorAll('.seat').forEach(el => el.remove());
+    players.forEach((p, idx) => {
+      const seat = document.createElement('div');
+      seat.className = 'seat' + (idx === MY_SEAT && MY_NAME ? ' you' : '');
+      seat.dataset.id = idx;
+      /* 按人数算角度，均匀分布在圆桌边缘 */
+      {
+        const total = players.length;
+        const ang = -Math.PI / 2 + idx * (2 * Math.PI / total);
+        const rx = total >= 7 ? 36 : (total >= 5 ? 38 : 37);
+        const ry = total >= 7 ? 36 : (total >= 5 ? 38 : 37);
+        seat.style.left = (50 + Math.cos(ang) * rx).toFixed(2) + '%';
+        seat.style.top  = (50 + Math.sin(ang) * ry).toFixed(2) + '%';
+        seat.style.width = (total >= 8 ? '17%' : total >= 7 ? '18%' : total >= 6 ? '20%' : '23%');
+        seat.style.minWidth = (total >= 7 ? '78px' : '92px');
+      }
+      if (!gameOver && idx === currentPlayerIndex && !cardInPlay) seat.classList.add('active');
+      if (!gameOver && cardInPlay && cardInPlay.targetPlayerIndex === idx) seat.classList.add('targetable');
+
+      const info = {};
+      p.faceUp.forEach(c => {
+        const t = c.typeIndex;
+        if (!info[t]) info[t] = { count: 0, crown: false, penalty: false, variant: c.variant || 0 };
+        info[t].count++;
+        if (c.isCrown) info[t].crown = true;
+        if (c.isPenalty) info[t].penalty = true;
+      });
+
+      let badges = '';
+      Object.keys(info).forEach(t => {
+        const b = BUG_TYPES[t], d = info[t];
+        let cls = 'face-badge';
+        if (d.crown) cls += ' crown';
+        else if (d.penalty) cls += ' penalty';
+        let mark = d.crown ? '👑' : (d.penalty ? '罚' : '');
+        badges += `<span class="${cls}"><img src="${cardImage(t, d.variant)}" alt="${b.name}">×${d.count}${mark}</span>`;
+      });
+
+      seat.innerHTML = `
+        <div class="seat-name">${p.name}${idx === MY_SEAT && MY_NAME ? YOU_BADGE : ''}</div>
+        <div class="seat-hand-count">手牌 ${p.hand.length}</div>
+        <div class="seat-face-up">${badges || '<span style="color:#6a8a6a;font-size:0.6rem;">—</span>'}</div>
+      `;
+      tableArea.appendChild(seat);
+    });
+  }
+
+  function renderCenter() {
+    centerArea.innerHTML = '';
+    if (gameOver) {
+      const banner = document.createElement('div');
+      banner.className = 'game-over-banner';
+      banner.textContent = winnerMessage || '游戏结束';
+      centerArea.appendChild(banner);
+      return;
+    }
+
+    if (cardInPlay) {
+      const cardEl = document.createElement('div');
+      cardEl.className = 'center-card card-back';
+      cardEl.id = 'centerCard';
+      cardEl.textContent = '?';
+      if (hasValidPassTarget()) cardEl.classList.add('draggable');
+      centerArea.appendChild(cardEl);
+
+      const claimEl = document.createElement('div');
+      claimEl.className = 'center-claim';
+      const tName = players[cardInPlay.targetPlayerIndex]?.name || '?';
+      const cName = claimName(cardInPlay.claimedTypeIndex);
+      claimEl.textContent = `→ ${tName} · 宣称「${cName}」`;
+      centerArea.appendChild(claimEl);
+
+      const canRespond = isMyTurnToRespond(cardInPlay.targetPlayerIndex);
+      if (!canRespond) {
+        const waitEl = document.createElement('div');
+        waitEl.className = 'center-placeholder';
+        waitEl.style.fontSize = '0.82rem';
+        waitEl.textContent = `⏳ 等待 ${tName} 做出选择（相信 / 质疑 / 传给别人）`;
+        centerArea.appendChild(waitEl);
+        const subEl = document.createElement('button');
+        subEl.className = 'peek-btn';
+        subEl.style.marginTop = '6px';
+        subEl.textContent = '同一台设备？本机代 ' + tName + ' 操作';
+        subEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          overrideSeat = cardInPlay ? cardInPlay.targetPlayerIndex : null;
+          renderCenter();
+        });
+        centerArea.appendChild(subEl);
+      }
+
+      const peekBtn = document.createElement('button');
+      peekBtn.className = 'peek-btn';
+      peekBtn.textContent = '👁 偷看';
+      peekBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!cardInPlay) return;
+        const actual = BUG_TYPES[cardInPlay.typeIndex];
+        centerArea.querySelectorAll('.peek-info').forEach(el => el.remove());
+        const info = document.createElement('div');
+        info.className = 'peek-info';
+        info.innerHTML = `
+          <img src="${cardImage(cardInPlay.typeIndex, cardInPlay.variant)}" alt="${actual.name}">
+          <div>真实：${actual.emoji}${actual.name}${cardInPlay.isCrown ? ' 👑皇冠' : ''}</div>
+        `;
+        centerArea.appendChild(info);
+        clearTimeout(peekTimeout);
+        peekTimeout = setTimeout(() => info.remove(), 3000);
+      });
+      if (canRespond) centerArea.appendChild(peekBtn);
+
+      if (canRespond && hasValidPassTarget()) {
+        const passBtn = document.createElement('button');
+        passBtn.className = 'pass-btn';
+        passBtn.textContent = '↗ 传给别人';
+        passBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!cardInPlay || gameOver) return;
+          showPassTargetModal();
+        });
+        centerArea.appendChild(passBtn);
+      }
+
+      const actions = document.createElement('div');
+      actions.className = 'pass-actions';
+      actions.innerHTML = `
+        <button class="believe-btn">✅ 相信</button>
+        <button class="doubt-btn">❌ 质疑</button>
+      `;
+      actions.querySelector('.believe-btn').addEventListener('click', () => handleAccept(true));
+      actions.querySelector('.doubt-btn').addEventListener('click', () => handleAccept(false));
+      if (canRespond) centerArea.appendChild(actions);
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'center-placeholder';
+      ph.textContent = '等待出牌';
+      centerArea.appendChild(ph);
+    }
+
+    const penaltyInfo = document.createElement('div');
+    penaltyInfo.className = 'penalty-stack-info';
+    penaltyInfo.textContent = `🃏 惩罚堆: ${penaltyDeck.length} 张`;
+    centerArea.appendChild(penaltyInfo);
+  }
+
+  // ===== 手牌区：斗地主式叠放 =====
+  function renderHandBar() {
+    handBar.innerHTML = '';
+
+    if (gameOver) {
+      handBar.innerHTML = '<div class="hand-bar-hint">🏁 游戏结束</div>';
+      return;
+    }
+
+    if (cardInPlay) {
+      const tName = players[cardInPlay.targetPlayerIndex]?.name || '?';
+      const hint = hasValidPassTarget()
+        ? `⏳ 等待 ${tName} 操作：相信 / 质疑，或点击「↗ 传给别人」/拖动中央牌`
+        : `⏳ 等待 ${tName} 操作：所有其他玩家已看过此牌，必须相信或质疑`;
+      handBar.innerHTML = `<div class="hand-bar-hint">${hint}</div>`;
+      return;
+    }
+
+    const cp = players[currentPlayerIndex];
+    if (!cp || cp.hand.length === 0) {
+      handBar.innerHTML = '<div class="hand-bar-hint">没有手牌</div>';
+      return;
+    }
+
+    // 按 typeIndex 分组；组内皇冠在前
+    const groups = new Map();
+    cp.hand.forEach((card, idx) => {
+      if (!groups.has(card.typeIndex)) groups.set(card.typeIndex, { crowns: [], normals: [] });
+      const g = groups.get(card.typeIndex);
+      if (card.isCrown) g.crowns.push(idx);
+      else g.normals.push(idx);
+    });
+
+    const sortedTypes = [...groups.keys()].sort((a, b) => a - b);
+
+    sortedTypes.forEach(typeIndex => {
+      const g = groups.get(typeIndex);
+      const groupEl = document.createElement('div');
+      groupEl.className = 'hand-group';
+
+      // 皇冠牌最左，普通牌随后
+      [...g.crowns, ...g.normals].forEach(idx => {
+        groupEl.appendChild(createHandCard(typeIndex, idx, cp.hand[idx].isCrown, cp.hand[idx].variant));
+      });
+
+      handBar.appendChild(groupEl);
+    });
+  }
+
+  function createHandCard(typeIndex, cardIndex, isCrown, variant) {
+    const bug = BUG_TYPES[typeIndex];
+    const el = document.createElement('div');
+    el.className = 'hand-card' + (isCrown ? ' crown-card' : '');
+    el.dataset.cardIndex = cardIndex;
+    el.innerHTML = `
+      <img class="card-art" src="${cardImage(typeIndex, variant)}" alt="${bug.name}" draggable="false">
+      <div class="card-name">${bug.name}</div>
+    `;
+    return el;
+  }
+
+  // ========== 拖拽 ==========
+  function getSeatAt(x, y) {
+    const seats = document.querySelectorAll('.seat');
+    for (const s of seats) {
+      const r = s.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return s;
+    }
+    return null;
+  }
+
+  function isValidDropTarget(playerId) {
+    if (gameOver) return false;
+    if (!cardInPlay) return playerId !== currentPlayerIndex;
+    if (playerId === cardInPlay.targetPlayerIndex) return false;
+    if (cardInPlay.seenBy.has(playerId)) return false;
+    return true;
+  }
+
+  function hasValidPassTarget() {
+    if (!cardInPlay) return false;
+    const seen = cardInPlay.seenBy;
+    const cur = cardInPlay.targetPlayerIndex;
+    return players.some(p => p.id !== cur && !seen.has(p.id));
+  }
+
+  function startDrag(e, sourceEl, sourceType, cardIndex) {
+    e.preventDefault();
+    const rect = sourceEl.getBoundingClientRect();
+
+    const clone = sourceEl.cloneNode(true);
+    clone.classList.add('drag-clone');
+    clone.style.left = rect.left + 'px';
+    clone.style.top = rect.top + 'px';
+    clone.style.width = rect.width + 'px';
+    clone.style.height = rect.height + 'px';
+    document.body.appendChild(clone);
+
+    sourceEl.style.opacity = '0.3';
+
+    dragState = {
+      sourceType, cardIndex, clone, sourceEl,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top
+    };
+
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup', onDragEnd);
+    document.addEventListener('pointercancel', onDragEnd);
+  }
+
+  function onDragMove(e) {
+    if (!dragState) return;
+    const { clone, offsetX, offsetY } = dragState;
+    clone.style.left = (e.clientX - offsetX) + 'px';
+    clone.style.top = (e.clientY - offsetY) + 'px';
+
+    document.querySelectorAll('.seat').forEach(s => s.classList.remove('drop-highlight'));
+    const seat = getSeatAt(e.clientX, e.clientY);
+    if (seat && isValidDropTarget(parseInt(seat.dataset.id))) {
+      seat.classList.add('drop-highlight');
+    }
+  }
+
+  function onDragEnd(e) {
+    if (!dragState) return;
+    const { clone, sourceEl, sourceType, cardIndex } = dragState;
+
+    clone.remove();
+    sourceEl.style.opacity = '';
+    document.querySelectorAll('.seat').forEach(s => s.classList.remove('drop-highlight'));
+
+    document.removeEventListener('pointermove', onDragMove);
+    document.removeEventListener('pointerup', onDragEnd);
+    document.removeEventListener('pointercancel', onDragEnd);
+
+    const seat = getSeatAt(e.clientX, e.clientY);
+    dragState = null;
+
+    if (seat) {
+      const targetId = parseInt(seat.dataset.id);
+      if (isValidDropTarget(targetId)) {
+        showClaimModal((claimedType) => {
+          if (sourceType === 'hand') {
+            executePlayCard(cardIndex, targetId, claimedType);
+          } else {
+            executePassCard(targetId, claimedType);
+          }
+        });
+        return;
+      }
+    }
+    renderHandBar();
+    renderCenter();
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (dragState || gameOver) return;
+
+    const handCard = e.target.closest('.hand-card');
+    if (handCard && !cardInPlay) {
+      const idx = parseInt(handCard.dataset.cardIndex);
+      startDrag(e, handCard, 'hand', idx);
+      return;
+    }
+
+    const centerCard = e.target.closest('#centerCard.draggable');
+    if (centerCard && cardInPlay && hasValidPassTarget()) {
+      startDrag(e, centerCard, 'center', null);
+      return;
+    }
+  });
+
+  // ========== 声明模态框 ==========
+  function showClaimModal(onSelect) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <h3>这张牌是...</h3>
+      <div class="bug-grid"></div>
+      <button class="cancel-btn">取消</button>
+    `;
+    const grid = modal.querySelector('.bug-grid');
+    BUG_TYPES.forEach((b, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'bug-option';
+      btn.innerHTML = `<img class="bug-thumb" src="${cardImage(i, 0)}" alt="${b.name}"><span class="bug-label">${b.emoji}${b.name}</span>`;
+      btn.addEventListener('click', () => {
+        overlay.remove();
+        onSelect(i);
+      });
+      grid.appendChild(btn);
+    });
+    /* 额外选项：声明这是一张皇冠牌 */
+    const crownBtn = document.createElement('button');
+    crownBtn.className = 'bug-option crown-option';
+    crownBtn.innerHTML = '<span style="font-size:1.5rem;">👑</span><span class="bug-label">这是皇冠</span>';
+    crownBtn.addEventListener('click', () => {
+      overlay.remove();
+      onSelect(CLAIM_CROWN);
+    });
+    grid.appendChild(crownBtn);
+    modal.querySelector('.cancel-btn').addEventListener('click', () => {
+      overlay.remove();
+      renderAll();
+    });
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  }
+
+  // ========== 传递目标选择模态框 ==========
+  function showPassTargetModal() {
+    if (!cardInPlay || gameOver) return;
+    const seen = cardInPlay.seenBy;
+    const cur = cardInPlay.targetPlayerIndex;
+    const availableTargets = players.filter(p => p.id !== cur && !seen.has(p.id));
+    if (availableTargets.length === 0) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <h3>把牌传给谁？</h3>
+      <div class="pass-target-grid"></div>
+      <button class="cancel-btn">取消</button>
+    `;
+    const grid = modal.querySelector('.pass-target-grid');
+    availableTargets.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'pass-target-btn';
+      btn.textContent = p.name;
+      btn.addEventListener('click', () => {
+        overlay.remove();
+        showClaimModal((claimedType) => {
+          executePassCard(p.id, claimedType);
+        });
+      });
+      grid.appendChild(btn);
+    });
+    modal.querySelector('.cancel-btn').addEventListener('click', () => {
+      overlay.remove();
+      renderAll();
+    });
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  }
+
+  // ========== 游戏动作 ==========
+  function executePlayCard(cardIndex, targetId, claimedType) {
+    const cp = players[currentPlayerIndex];
+    const card = cp.hand[cardIndex];
+    if (!card) return;
+
+    cardInPlay = {
+      typeIndex: card.typeIndex,
+      variant: card.variant || 0,
+      isCrown: card.isCrown,
+      claimedTypeIndex: claimedType,
+      targetPlayerIndex: targetId,
+      seenBy: new Set([currentPlayerIndex]),
+      lastPasserId: currentPlayerIndex
+    };
+    cp.hand.splice(cardIndex, 1);
+
+    setLog(`${cp.name} 把一张牌传给 ${players[targetId].name}，宣称是「${BUG_TYPES[claimedType].name}」`);
+    renderAll();
+  }
+
+  function executePassCard(targetId, claimedType) {
+    if (!cardInPlay) return;
+    const passer = players[cardInPlay.targetPlayerIndex];
+    cardInPlay.lastPasserId = passer.id;
+    cardInPlay.targetPlayerIndex = targetId;
+    cardInPlay.claimedTypeIndex = claimedType;
+    cardInPlay.seenBy.add(passer.id);
+
+    setLog(`${passer.name} 偷看后传给 ${players[targetId].name}，宣称是「${BUG_TYPES[claimedType].name}」`);
+    renderAll();
+  }
+
+  function addCardToPlayer(player, card) {
+    player.faceUp.push(card);
+    if (card.isCrown) triggerPenaltyDraw(player);
+  }
+
+  /* ========== 拍桌 ========== */
+  let slamTimer = null;
+  function slamTable() {
+    const hand = document.createElement('div');
+    hand.className = 'slam-hand';
+    hand.textContent = '🖐️';
+    document.body.appendChild(hand);
+    tableArea.classList.remove('shake', 'slam-flash');
+    void tableArea.offsetWidth;          // 强制重排，让动画能重复播放
+    tableArea.classList.add('shake', 'slam-flash');
+    setTimeout(() => {
+      hand.remove();
+      tableArea.classList.remove('shake', 'slam-flash');
+    }, 620);
+    if (navigator.vibrate) { try { navigator.vibrate(60); } catch (e) {} }
+  }
+  /* 只有被传牌的人（本机身份）才能操作；没有大厅身份时视为热座模式，谁都能操作 */
+  let overrideSeat = null;   // 同一台设备轮流玩时，允许"本机代按"
+  function isMyTurnToRespond(idx) {
+    if (overrideSeat != null && Number(idx) === Number(overrideSeat)) return true;
+    if (!MY_NAME) return true;
+    return Number(idx) === Number(MY_SEAT);
+  }
+
+  /* 拍桌广播：让同一个房间的人一起震 */
+  let slamChannel = null;
+  function initSlamNet() {
+    if (!NET_ROOM || typeof openChannel !== 'function') return;
+    try {
+      slamChannel = openChannel((msg) => {
+        if (!msg || msg.type !== 'dg_slam') return;
+        slamTable();
+        const who = (msg.payload && msg.payload.by) ? msg.payload.by : '有人';
+        setLog(`👋 ${who} 拍了桌子！`);
+      });
+    } catch (e) { console.warn('拍桌同步不可用', e); }
+  }
+  function broadcastSlam() {
+    if (slamChannel) {
+      try { slamChannel.send('dg_slam', { by: MY_NAME || '有人', ts: Date.now() }); } catch (e) {}
+    }
+  }
+
+  function showSlamButton(ms) {
+    const btn = document.getElementById('slamBtn');
+    if (!btn) return;
+    btn.classList.remove('hidden');
+    clearTimeout(slamTimer);
+    slamTimer = setTimeout(() => btn.classList.add('hidden'), ms || 9000);
+  }
+
+  function triggerPenaltyDraw(player) {
+    let draws = 0;
+    const drawnCards = [];
+    while (penaltyDeck.length > 0) {
+      const p = penaltyDeck.pop();
+      drawnCards.push(p);
+      player.faceUp.push(p);
+      draws++;
+      if (!p.isCrown) break;
+    }
+    if (draws > 0) {
+      const names = drawnCards.map(c => {
+        const b = BUG_TYPES[c.typeIndex];
+        return `${b.emoji}${b.name}${c.isCrown ? '👑' : ''}`;
+      }).join('、');
+      setLog(`👑 皇冠触发！${player.name} 从惩罚堆抽到：${names}　—— 来，拍一下桌子！`);
+    } else {
+      setLog(`👑 皇冠触发，但惩罚堆已空！`);
+    }
+    showSlamButton();
+  }
+
+  function handleAccept(believe) {
+    if (!cardInPlay || gameOver) return;
+
+    const actualType = cardInPlay.typeIndex;
+    const claimedType = cardInPlay.claimedTypeIndex;
+    const isTruth = (Number(claimedType) === CLAIM_CROWN)
+      ? !!cardInPlay.isCrown
+      : (actualType === claimedType);
+    const isCorrect = believe === isTruth;
+
+    let receiverId;
+    if (isCorrect) receiverId = cardInPlay.lastPasserId;
+    else receiverId = cardInPlay.targetPlayerIndex;
+
+    const receiver = players[receiverId];
+    const actualBug = BUG_TYPES[actualType];
+    const targetName = players[cardInPlay.targetPlayerIndex].name;
+
+    addCardToPlayer(receiver, {
+      typeIndex: cardInPlay.typeIndex,
+      variant: cardInPlay.variant || 0,
+      isCrown: cardInPlay.isCrown,
+      isPenalty: false
+    });
+
+    setLog(`${targetName} ${believe ? '相信' : '质疑'}。牌是${actualBug.emoji}${actualBug.name}${cardInPlay.isCrown ? '👑' : ''}，判断${isCorrect ? '正确' : '错误'}，${receiver.name} 收下牌。`);
+
+    cardInPlay = null;
+    currentPlayerIndex = receiverId;
+    peekTimeout && clearTimeout(peekTimeout);
+
+    if (checkPlayerLost(receiver)) {
+      gameOver = true;
+      winnerMessage = `${receiver.name} 面前集齐 4 张相同的虫子，输掉了游戏！`;
+      setLog(winnerMessage);
+      renderAll();
+      return;
+    }
+
+    if (players[currentPlayerIndex].hand.length === 0) {
+      gameOver = true;
+      winnerMessage = `${players[currentPlayerIndex].name} 没有手牌可出，输掉了游戏！`;
+      setLog(winnerMessage);
+      renderAll();
+      return;
+    }
+
+    renderAll();
+  }
+
+  function checkPlayerLost(player) {
+    const counts = {};
+    for (const c of player.faceUp) {
+      counts[c.typeIndex] = (counts[c.typeIndex] || 0) + 1;
+      if (counts[c.typeIndex] >= 4) return true;
+    }
+    return false;
+  }
+
+  (function paintNetBar() {
+    const roomEl = document.getElementById('netRoom');
+    const meEl = document.getElementById('netMe');
+    if (roomEl) roomEl.textContent = '房间 ' + (NET_ROOM || '—');
+    if (meEl) meEl.textContent = '你：' + (MY_NAME || '未登录（从游戏大厅进入会自动带上名字）');
+  })();
+
+  document.getElementById('slamBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    slamTable();
+    broadcastSlam();
+  });
+
+  initSlamNet();
+
+  document.getElementById('resetBtn').addEventListener('click', initGame);
+  document.getElementById('countSel').addEventListener('change', (e) => {
+    const n = Number(e.target.value) || 4;
+    if (n !== playerCount) {
+      playerCount = n;
+      initGame();
+    }
+  });
+  initGame();
+})();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
