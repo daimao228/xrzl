@@ -329,6 +329,51 @@
     box-shadow: 0 6px 0 #1a2a1a, 0 0 14px #f5d74288;
   }
   .pass-target-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a2a1a; }
+  .slam-btn {
+    position: fixed; right: 16px; bottom: 22px; z-index: 50;
+    padding: 12px 18px; border-radius: 30px; cursor: pointer;
+    font-family: inherit; font-size: 15px; font-weight: 800;
+    color: #1a1408; background: linear-gradient(180deg, #ffd75e, #d9a520);
+    border: 2px solid #f5d742; box-shadow: 0 6px 18px rgba(0,0,0,.45);
+    animation: slamBtnPulse 1s ease-in-out infinite;
+  }
+  .slam-btn.hidden { display: none; }
+  @keyframes slamBtnPulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  .slam-hand {
+    position: fixed; left: 50%; top: 50%; z-index: 90; pointer-events: none;
+    font-size: 120px; transform-origin: 50% 90%;
+    animation: slamHand .5s cubic-bezier(.3,.9,.4,1) forwards;
+    filter: drop-shadow(0 12px 18px rgba(0,0,0,.55));
+  }
+  @keyframes slamHand {
+    0%   { transform: translate(-50%, -260%) rotate(-30deg) scale(1.7); opacity: 0; }
+    45%  { transform: translate(-50%, -70%) rotate(-6deg) scale(1.25); opacity: 1; }
+    55%  { transform: translate(-50%, -46%) rotate(4deg) scale(1); opacity: 1; }
+    75%  { transform: translate(-50%, -60%) rotate(2deg) scale(1.04); opacity: .95; }
+    100% { transform: translate(-50%, -90%) rotate(0deg) scale(1); opacity: 0; }
+  }
+  .table-area.shake { animation: tableShake .5s cubic-bezier(.36,.07,.19,.97); }
+  @keyframes tableShake {
+    0%,100% { transform: translate(0,0) rotate(0); }
+    12% { transform: translate(-7px,5px) rotate(-1.1deg); }
+    25% { transform: translate(6px,-6px) rotate(1deg); }
+    38% { transform: translate(-5px,-4px) rotate(-.8deg); }
+    52% { transform: translate(5px,5px) rotate(.7deg); }
+    68% { transform: translate(-3px,3px) rotate(-.4deg); }
+    84% { transform: translate(2px,-2px) rotate(.2deg); }
+  }
+  .table-area::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  }
+  .table-area.slam-flash::after {
+    background: radial-gradient(circle, rgba(255,240,180,.55) 0%, rgba(255,215,90,.18) 35%, transparent 62%);
+    animation: slamFlash .45s ease-out forwards;
+  }
+  @keyframes slamFlash { from { opacity: 1; } to { opacity: 0; } }
+
   .net-bar {
     display: flex; align-items: center; gap: 8px; justify-content: center;
     background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
@@ -359,6 +404,7 @@
     <div class="center-area" id="centerArea"></div>
   </div>
   <div class="hand-bar" id="handBar"></div>
+  <button class="slam-btn hidden" id="slamBtn">👋 拍桌</button>
   <div class="log-panel">
     <div class="log-text" id="logText">皇家版：翻开皇冠牌会触发惩罚堆抽牌，抽到皇冠则继续抽，直到非皇冠。</div>
     <div class="count-row">
@@ -884,6 +930,30 @@
     if (card.isCrown) triggerPenaltyDraw(player);
   }
 
+  /* ========== 拍桌 ========== */
+  let slamTimer = null;
+  function slamTable() {
+    const hand = document.createElement('div');
+    hand.className = 'slam-hand';
+    hand.textContent = '🖐️';
+    document.body.appendChild(hand);
+    tableArea.classList.remove('shake', 'slam-flash');
+    void tableArea.offsetWidth;          // 强制重排，让动画能重复播放
+    tableArea.classList.add('shake', 'slam-flash');
+    setTimeout(() => {
+      hand.remove();
+      tableArea.classList.remove('shake', 'slam-flash');
+    }, 620);
+    if (navigator.vibrate) { try { navigator.vibrate(60); } catch (e) {} }
+  }
+  function showSlamButton(ms) {
+    const btn = document.getElementById('slamBtn');
+    if (!btn) return;
+    btn.classList.remove('hidden');
+    clearTimeout(slamTimer);
+    slamTimer = setTimeout(() => btn.classList.add('hidden'), ms || 9000);
+  }
+
   function triggerPenaltyDraw(player) {
     let draws = 0;
     const drawnCards = [];
@@ -899,10 +969,11 @@
         const b = BUG_TYPES[c.typeIndex];
         return `${b.emoji}${b.name}${c.isCrown ? '👑' : ''}`;
       }).join('、');
-      setLog(`👑 皇冠触发！${player.name} 从惩罚堆抽到：${names}`);
+      setLog(`👑 皇冠触发！${player.name} 从惩罚堆抽到：${names}　—— 来，拍一下桌子！`);
     } else {
       setLog(`👑 皇冠触发，但惩罚堆已空！`);
     }
+    showSlamButton();
   }
 
   function handleAccept(believe) {
@@ -969,6 +1040,11 @@
     if (meEl) meEl.textContent = '你：' + (MY_NAME || '未登录（从游戏大厅进入会自动带上名字）');
   })();
 
+  document.getElementById('slamBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    slamTable();
+  });
+
   document.getElementById('resetBtn').addEventListener('click', initGame);
   document.getElementById('countSel').addEventListener('change', (e) => {
     const n = Number(e.target.value) || 4;
@@ -982,6 +1058,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
