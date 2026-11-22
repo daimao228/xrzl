@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -356,12 +356,12 @@
     { name: '蝎子', emoji: '🦂', art: '蝎子' }
   ];
   const PLAYER_COUNT = 4;
-  const CARD_ART_ROOT = '德国蟑螂卡面/修复版_700x1000';
+  const CARD_ART_ROOT = 'dgzl-cards';   // 压缩后的 webp 卡面（约 8KB/张）
 
   function cardImage(typeIndex, variant) {
     const folder = BUG_TYPES[typeIndex].art;
     const n = String(((Number(variant) || 0) % 8) + 1).padStart(2, '0');
-    return encodeURI(`${CARD_ART_ROOT}/${folder}/${folder}_${n}.png`);
+    return encodeURI(`${CARD_ART_ROOT}/${folder}/${folder}_${n}.webp`);
   }
 
   let players = [];
