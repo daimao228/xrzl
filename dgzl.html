@@ -412,6 +412,7 @@
       <select id="countSel">
         <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
       </select>
+      <button class="reset-btn" id="testSlamBtn" title="测试拍桌：点击后全房间一起震">👋 测试拍桌</button>
       <button class="reset-btn" id="resetBtn">🔄 新游戏</button>
     </div>
   </div>
@@ -1106,6 +1107,13 @@
     if (meEl) meEl.textContent = '你：' + (MY_NAME || '未登录（从游戏大厅进入会自动带上名字）');
   })();
 
+  const testSlam = document.getElementById('testSlamBtn');
+  if (testSlam) testSlam.addEventListener('click', (e) => {
+    e.stopPropagation();
+    slamTable();
+    broadcastSlam();
+  });
+
   document.getElementById('slamBtn').addEventListener('click', (e) => {
     e.stopPropagation();
     slamTable();
@@ -1127,6 +1135,7 @@
 </script>
 </body>
 </html>
+
 
 
 
