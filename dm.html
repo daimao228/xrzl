@@ -1636,6 +1636,8 @@ function applyPendingAction(a, extraResult, forcedDisabled) {
     else if (a.actionType === 'kill') {
       targets.forEach(t => {
         const tOff = t.marks.includes('中毒') || t.marks.includes('醉酒');
+        /* 刀已经死了的人 = 当空刀处理 */
+        if (!t.alive) { notes.push(`${t.name} 早已死亡（空刀）`); return; }
         if (t.marks.includes('保护')) { notes.push(`${t.name} 被保护，未死亡`); return; }
         /* 中毒/醉酒的士兵能力失效，照样会被恶魔杀死 */
         if (t.role === 'soldier' && !tOff) { notes.push(`${t.name} 是士兵，免疫恶魔杀害`); return; }
@@ -3180,6 +3182,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
+
 
 
 
