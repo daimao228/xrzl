@@ -568,8 +568,14 @@
         initGame();
         if (players[MY_SEAT]) players[MY_SEAT].netId = NET_ID;
         netBroadcast();
+        setInterval(netBroadcast, 2000);      // 房主持续广播，后进来的也能收到
       }
     }, 1200);
+
+    /* 客户端持续举手，房主收到就补发座位和牌局 */
+    setInterval(() => {
+      if (netRole === 'client') netSend('dg_hello', { id: NET_ID, name: MY_NAME || '玩家' });
+    }, 3000);
   }
   function iAmActing() {
     if (netRole === 'client') return MY_SEAT === currentPlayerIndex;
@@ -1286,6 +1292,7 @@
 </script>
 </body>
 </html>
+
 
 
 
