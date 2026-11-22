@@ -19,7 +19,7 @@
 index.html               站点首页（两个游戏的入口）
 shared/                  公共模块：shared.js、supabase-config.js
 botc/                    血染钟楼：dm / player / spectator / lobby … + assets、icons
-dgzl/                    德国蟑螂：index（单机）、online（联机）、cards（卡面）
+dgzl/                    德国蟑螂：online（联机）、cards（卡面）
 _redirects               可选，帽子云用不到
 ```
 
@@ -40,8 +40,7 @@ _redirects               可选，帽子云用不到
 │   ├── assets/
 │   └── icons/
 └── dgzl/                 ← 德国蟑螂
-    ├── index.html        ← 单机版（对外主链接）
-    ├── online.html       ← 联机版
+    ├── online.html       ← 联机版（唯一入口）
     └── cards/            ← 卡面 webp，共 0.5MB
 ```
 
@@ -87,8 +86,8 @@ transport: 'poll',
 
 手机打开 `https://botc.maozi.io/`：
 
-- 首页出现「血染钟楼 / 德国蟑螂」两个入口 → 静态托管正常
-- 进「血染钟楼」→ 房间入口页能开 → `/botc/…` 这类子目录路径也正常
+- 首页出现「游戏大厅 / 血染钟楼 · 说书人端」两个入口 → 静态托管正常
+- 进「游戏大厅」→ 能选 ID 登录 → 三个游戏方块 → 点方块弹房间号 → `/botc/…`、`/dgzl/…` 子目录路径也正常
 - 点页面左下角状态标签 → 显示「已连接 · 轮询模式」→ 代理正常
 - 显示 `failed to fetch` → 反向代理规则没生效，回去检查「请求路径 开头是 /rest/v1」和 Host 透传
 

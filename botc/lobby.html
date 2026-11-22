@@ -5,50 +5,99 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>游戏大厅</title>
 <style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body {
-    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: radial-gradient(circle at 50% 20%, #1c2436 0%, #0b0e16 70%);
-    color: #f2ecdd; padding: 18px 14px;
+    margin:0; min-height:100vh; padding:22px 14px 32px;
+    display:flex; justify-content:center;
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#f2ecdd;
+    background:radial-gradient(circle at 50% 12%, #22303f 0%, #0b0e16 72%);
   }
-  .wrap { width: min(96vw, 560px); }
-  h1 { font-size: 20px; letter-spacing: 6px; text-align: center; margin: 0 0 4px; color: #e8c65c; }
-  .sub { text-align: center; font-size: 11px; color: #8d8578; letter-spacing: 2px; margin-bottom: 18px; }
+  .wrap { width:min(96vw, 620px); }
+  h1 { font-size:20px; letter-spacing:6px; text-align:center; margin:0 0 4px; color:#e8c65c; }
+  .sub { text-align:center; font-size:10.5px; color:#8d8578; letter-spacing:2px; margin-bottom:18px; }
   .panel {
-    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
-    border-radius: 14px; padding: 14px; margin-bottom: 14px;
+    background:rgba(255,255,255,.055); border:1px solid rgba(255,255,255,.12);
+    border-radius:16px; padding:14px;
   }
-  label { display: block; font-size: 11px; color: #a89f8c; margin-bottom: 5px; letter-spacing: 1px; }
-  input {
-    width: 100%; padding: 10px 12px; border-radius: 9px; font-size: 15px;
-    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); color: #fff;
-    outline: none;
+  .panel-title {
+    font-size:11px; letter-spacing:2px; color:#a89f8c; margin-bottom:10px;
+    display:flex; align-items:center; justify-content:space-between;
   }
-  input:focus { border-color: #e8c65c; box-shadow: 0 0 0 3px rgba(232,198,92,.15); }
-  .row { display: flex; gap: 8px; }
-  .row > div { flex: 1; }
+  .panel-title .logout { color:#8d8578; font-size:11px; cursor:pointer; text-decoration:underline; display:none; }
+  label { display:block; font-size:11px; color:#a89f8c; margin-bottom:5px; letter-spacing:1px; }
+  input, select {
+    width:100%; padding:10px 12px; border-radius:10px; font-size:15px; font-family:inherit;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff;
+    outline:none; appearance:none; -webkit-appearance:none;
+  }
+  select { background-image:linear-gradient(45deg,transparent 50%,#8d8578 50%),linear-gradient(135deg,#8d8578 50%,transparent 50%);
+           background-position:calc(100% - 18px) 52%, calc(100% - 13px) 52%;
+           background-size:5px 5px,5px 5px; background-repeat:no-repeat; padding-right:34px; }
+  input:focus, select:focus { border-color:#e8c65c; box-shadow:0 0 0 3px rgba(232,198,92,.15); }
+  .acc-row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
+  .field { flex:1; min-width:120px; }
+  .field.pw { flex:0 1 150px; }
   .btn {
-    display: block; width: 100%; margin-top: 10px; padding: 11px; border-radius: 10px; cursor: pointer;
-    font-size: 14px; font-family: inherit; border: 1px solid rgba(255,255,255,.16);
-    background: rgba(255,255,255,.08); color: #f2ecdd;
+    padding:10px 18px; border-radius:10px; cursor:pointer; font-size:14px; font-family:inherit;
+    border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.08); color:#f2ecdd;
+    white-space:nowrap; height:41px;
   }
-  .btn.primary {
-    background: linear-gradient(180deg, #c8a335, #96700f); border-color: #c8a335; color: #1a1408; font-weight: 700;
+  .btn.primary { background:linear-gradient(180deg,#d8b23f,#96700f); border-color:#c8a335; color:#1a1408; font-weight:700; }
+  .btn:active { transform:translateY(1px); }
+  .hidden { display:none !important; }
+  .acc-status { font-size:12px; color:#8d8578; min-height:18px; margin-top:9px; }
+  .acc-status.ok { color:#7ad19a; }
+  .acc-status.err { color:#e08a7a; }
+
+  .games-title {
+    font-size:11px; letter-spacing:2px; color:#a89f8c;
+    margin:22px 0 10px 2px;
   }
-  .btn:active { transform: translateY(1px); }
-  .entry {
-    display: flex; align-items: center; gap: 12px; padding: 14px; margin-top: 10px;
-    border-radius: 12px; text-decoration: none; color: inherit;
-    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+  .tiles { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+  .tile {
+    position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:4px; aspect-ratio:1/1; padding:10px 6px; cursor:pointer; font-family:inherit;
+    border-radius:16px; border:1px solid rgba(255,255,255,.13);
+    background:linear-gradient(170deg, rgba(255,255,255,.10), rgba(255,255,255,.035));
+    color:#f2ecdd; transition:.16s; text-align:center;
   }
-  .entry:active { background: rgba(255,255,255,.12); }
-  .entry .ico { font-size: 26px; width: 34px; text-align: center; }
-  .entry b { display: block; font-size: 14px; }
-  .entry span { font-size: 11px; color: #9a9a8c; }
-  .tip { font-size: 11px; color: #8d8578; line-height: 1.7; margin-top: 12px; }
-  .status { font-size: 12px; color: #7ad19a; min-height: 18px; margin-top: 8px; }
-  .ver { text-align: center; font-size: 10px; color: #5d5866; margin-top: 16px; }
+  .tile:hover { border-color:rgba(232,198,92,.65); transform:translateY(-2px);
+                box-shadow:0 10px 24px rgba(0,0,0,.35); }
+  .tile:active { transform:translateY(0); }
+  .tile .emoji { font-size:30px; line-height:1.1; }
+  .tile b { font-size:13px; letter-spacing:.5px; }
+  .tile span { font-size:10.5px; color:#9a9a8c; line-height:1.4; }
+  .tile.disabled { opacity:.55; }
+  .tile .badge {
+    position:absolute; top:8px; right:8px; font-size:9px; padding:1px 6px; border-radius:8px;
+    background:rgba(232,198,92,.18); color:#e8c65c; border:1px solid rgba(232,198,92,.4);
+  }
+
+  .tip { margin-top:16px; font-size:11px; line-height:1.8; color:#81817a; }
+  .tip code { background:rgba(255,255,255,.07); padding:1px 5px; border-radius:4px; font-size:10.5px; }
+  .ver { text-align:center; font-size:10px; color:#565a66; margin-top:18px; }
+
+  /* ---------- 房间号弹窗 ---------- */
+  .modal {
+    position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.66); backdrop-filter:blur(3px); padding:16px;
+  }
+  .modal-box {
+    width:min(94vw, 340px); background:#1b2230; border:1px solid rgba(232,198,92,.35);
+    border-radius:18px; padding:18px; box-shadow:0 24px 60px rgba(0,0,0,.6);
+  }
+  .modal-title { font-size:15px; color:#e8c65c; margin-bottom:4px; letter-spacing:.5px; }
+  .modal-sub { font-size:11px; color:#8d8578; margin-bottom:14px; }
+  .modal-actions { display:flex; gap:8px; margin-top:14px; }
+  .modal-actions .btn { flex:1; }
+  .modal-err { font-size:11.5px; color:#e08a7a; min-height:16px; margin-top:8px; }
+
+  @media (max-width: 380px) {
+    .tile .emoji { font-size:26px; }
+    .tile b { font-size:12px; }
+    .field.pw { flex:1 1 100%; }
+  }
 </style>
 </head>
 <body>
@@ -56,111 +105,290 @@
   <h1>游戏大厅</h1>
   <div class="sub">GAME LOBBY</div>
 
-  <div class="panel">
-    <div class="row">
-      <div>
-        <label>你的名字</label>
-        <input id="nameInput" maxlength="10" placeholder="例如：小明">
-      </div>
-      <div>
-        <label>房间号</label>
-        <input id="roomInput" maxlength="32" placeholder="例如：bg2">
-      </div>
+  <!-- ============ 上：账号 ============ -->
+  <section class="panel">
+    <div class="panel-title">
+      <span>账号</span>
+      <span class="logout" id="btnLogout">退出账号</span>
     </div>
-    <button class="btn primary" id="btnEnter">保存并进入大厅</button>
-    <div class="status" id="status"></div>
-  </div>
+    <div class="acc-row">
+      <div class="field">
+        <label>选择你的 ID</label>
+        <select id="accSel"></select>
+        <input id="newIdInput" class="hidden" maxlength="10" placeholder="新 ID，例如：小明"
+               style="margin-top:8px" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field pw">
+        <label>密码</label>
+        <input id="accPw" type="password" maxlength="32" placeholder="密码"
+               autocomplete="current-password">
+      </div>
+      <button class="btn primary" id="btnLogin">登录</button>
+    </div>
+    <div class="acc-status" id="accStatus"></div>
+  </section>
 
-  <a class="entry" id="linkPlayer" href="#">
-    <div class="ico">🎭</div>
-    <div><b>血染钟楼 · 玩家端</b><span>不用再输入账号密码，进去点座位就坐</span></div>
-  </a>
-  <a class="entry" id="linkSpec" href="#">
-    <div class="ico">👁</div>
-    <div><b>血染钟楼 · 旁观端</b><span>只读观战，需要说书人给的旁观密码</span></div>
-  </a>
-  <a class="entry" id="linkDgzl" href="#">
-    <div class="ico">🪳</div>
-    <div><b>德国蟑螂</b><span>同一房间的朋友一起玩</span></div>
-  </a>
+  <!-- ============ 下：游戏模块 ============ -->
+  <div class="games-title">选择游戏</div>
+  <div class="tiles" id="tiles">
+    <button class="tile" data-page="player" data-title="血染钟楼 · 玩家端" data-tag="血染">
+      <div class="emoji">🎭</div>
+      <b>血染钟楼</b>
+      <span>玩家端 · 点座位入座</span>
+    </button>
+    <button class="tile" data-page="spectator" data-title="血染钟楼 · 旁观端" data-tag="旁观">
+      <div class="emoji">👁</div>
+      <b>血染钟楼</b>
+      <span>旁观 · 只要密码</span>
+    </button>
+    <button class="tile" data-page="../dgzl/online" data-title="德国蟑螂 · 联机版" data-tag="蟑螂">
+      <div class="emoji">🪳</div>
+      <b>德国蟑螂</b>
+      <span>联机 · 同一房间</span>
+    </button>
+  </div>
 
   <div class="tip">
-    · 说书人端（DM）不在这里，只有主持人自己用 <code>dm#room=房间号</code> 打开。<br>
-    · 大厅只需要填一次名字，之后换页面都不用再登录。<br>
-    · 房间号要和大家一致，否则看不到同一个牌桌。
+    · 先说书人开好房间，把房间号发给大家，大家用同一个房间号进。<br>
+    · 账号只要在<strong>这台设备</strong>登录一次，进玩家端不用再输密码。<br>
+    · 房间号用 <code>#room=xxx</code> 传，帽子云不吃 <code>?查询</code>。
   </div>
   <div class="ver" id="verLine"></div>
+</div>
+
+<!-- 房间号弹窗 -->
+<div class="modal hidden" id="roomModal">
+  <div class="modal-box">
+    <div class="modal-title" id="roomTitle">进入游戏</div>
+    <div class="modal-sub">和朋友们用同一个房间号才能坐同一桌</div>
+    <label>房间号</label>
+    <input id="roomInput" maxlength="32" placeholder="例如：bg2" autocomplete="off" spellcheck="false">
+    <div class="modal-err" id="roomErr"></div>
+    <div class="modal-actions">
+      <button class="btn" id="btnRoomCancel">取消</button>
+      <button class="btn primary" id="btnRoomGo">进入</button>
+    </div>
+  </div>
 </div>
 
 <script>
 window.APP_VERSION = '2026-11-22';
 (function () {
-  const KEY = 'botc_lobby';
-  const nameEl = document.getElementById('nameInput');
-  const roomEl = document.getElementById('roomInput');
-  const statusEl = document.getElementById('status');
-  const verEl = document.getElementById('verLine');
+  'use strict';
 
-  function load() {
-    try { return JSON.parse(localStorage.getItem(KEY) || 'null') || null; } catch (e) { return null; }
+  var KEY = 'botc_lobby';         // 当前登录身份：{ name, pass, room }
+  var ACC_KEY = 'botc_accounts';  // 这台设备见过的账号：{ id: password }
+  var LAST_ROOM = 'botc_last_room';
+
+  var sel = document.getElementById('accSel');
+  var newIdInput = document.getElementById('newIdInput');
+  var pwInput = document.getElementById('accPw');
+  var statusEl = document.getElementById('accStatus');
+  var logoutBtn = document.getElementById('btnLogout');
+  var loginBtn = document.getElementById('btnLogin');
+  var roomModal = document.getElementById('roomModal');
+  var roomInput = document.getElementById('roomInput');
+  var roomTitle = document.getElementById('roomTitle');
+  var roomErr = document.getElementById('roomErr');
+  var verEl = document.getElementById('verLine');
+
+  var accounts = {};
+  var activeId = '';
+  var pendingPage = null;
+
+  /* ---------------- 存取 ---------------- */
+  function loadAccounts() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(ACC_KEY) || '{}');
+      if (raw && typeof raw === 'object') accounts = raw;
+    } catch (e) { accounts = {}; }
   }
-  function save(o) {
-    try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
-    try { localStorage.setItem('botc_last_room', o.room); } catch (e) {}
+  function saveAccounts() {
+    try { localStorage.setItem(ACC_KEY, JSON.stringify(accounts)); } catch (e) {}
   }
-  /* 由名字生成固定的密码，换设备也能用同一个身份 */
-  function passFor(name) {
-    let h = 5381;
-    const s = 'dgzl:' + name;
-    for (let i = 0; i < s.length; i++) h = (((h << 5) + h) + s.charCodeAt(i)) >>> 0;
-    return 'L' + h.toString(36) + 'x';
+  function loadActive() {
+    var o = null;
+    try { o = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+    if (o && o.name) {
+      activeId = String(o.name).slice(0, 10);
+      if (!accounts[activeId] && o.pass) accounts[activeId] = String(o.pass);
+    }
+  }
+  function saveActive(id, pass, room) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ name: id, pass: pass, room: room }));
+      localStorage.setItem(LAST_ROOM, room);
+    } catch (e) {}
+  }
+  function lastRoom() {
+    var r = '';
+    try { r = localStorage.getItem(LAST_ROOM) || ''; } catch (e) {}
+    if (!r) { try { var o = JSON.parse(localStorage.getItem(KEY) || 'null'); r = (o && o.room) || ''; } catch (e) {} }
+    return sanitizeRoom(r);
   }
   function sanitizeRoom(v) {
-    return String(v || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32) || 'lobby';
+    return String(v || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
   }
-  /* 帽子云对 .html 会 308、对 ?查询 会 307 补斜杠 → 线上用无扩展名 + #房间号 */
-  function pagePath(page) {
-    return (location.protocol === 'file:') ? page : page.replace(/\.html$/i, '');
+  function randRoom() {
+    var s = Math.random().toString(36).slice(2, 6);
+    return (s + 'abcd').slice(0, 4);
   }
-  /* 德国蟑螂在 ../dgzl/ 里：线上用目录（帽子云会补斜杠），本地 file:// 用 index.html */
-  function dgzlPath(room) {
-    const base = (location.protocol === 'file:') ? '../dgzl/index.html' : '../dgzl/';
-    return base + '#room=' + encodeURIComponent(room);
-  }
-
-  function refresh() {
-    const name = nameEl.value.trim();
-    const room = sanitizeRoom(roomEl.value.trim());
-    const p = pagePath;
-    document.getElementById('linkPlayer').href = p('player.html') + '#room=' + encodeURIComponent(room);
-    document.getElementById('linkSpec').href = p('spectator.html') + '#room=' + encodeURIComponent(room);
-    document.getElementById('linkDgzl').href = dgzlPath(room);
-    if (name) statusEl.textContent = '以「' + name + '」的身份进入，房间 ' + room;
-    else statusEl.textContent = '先填名字，下面三个入口就能直接进';
+  function setStatus(text, kind) {
+    statusEl.textContent = text || '';
+    statusEl.className = 'acc-status' + (kind ? ' ' + kind : '');
   }
 
-  const savedId = load();
-  if (savedId && savedId.name) nameEl.value = savedId.name;
-  const urlRoom = (function () {
-    const h = String(location.hash || '').replace(/^#/, '');
-    return (h.indexOf('room=') === 0) ? decodeURIComponent(h.slice(5)) : '';
-  })();
-  roomEl.value = sanitizeRoom(urlRoom || (savedId && savedId.room) || localStorage.getItem('botc_last_room') || 'lobby');
+  /* ---------------- 账号 UI ---------------- */
+  function renderAccounts() {
+    var ids = Object.keys(accounts).sort();
+    var current = activeId || (ids[0] || '');
+    sel.innerHTML = '';
+    ids.forEach(function (id) {
+      var op = document.createElement('option');
+      op.value = id;
+      op.textContent = id;
+      sel.appendChild(op);
+    });
+    var opNew = document.createElement('option');
+    opNew.value = '__new__';
+    opNew.textContent = '＋ 新建 ID';
+    sel.appendChild(opNew);
 
-  nameEl.addEventListener('input', refresh);
-  roomEl.addEventListener('input', refresh);
+    if (current && accounts[current]) sel.value = current;
+    else sel.value = '__new__';
+    onSelectChange(true);
+  }
 
-  document.getElementById('btnEnter').addEventListener('click', () => {
-    const name = nameEl.value.trim();
-    if (!name) { statusEl.textContent = '请先填名字'; nameEl.focus(); return; }
-    const room = sanitizeRoom(roomEl.value.trim());
-    roomEl.value = room;
-    save({ name: name, pass: passFor(name), room: room });
-    statusEl.textContent = '已保存 ✓ 点下面的入口直接进';
+  function onSelectChange(silent) {
+    var isNew = sel.value === '__new__';
+    newIdInput.classList.toggle('hidden', !isNew);
+    if (isNew) {
+      newIdInput.value = '';
+      // 新建时给个建议密码（和老版本一致，方便老玩家直接进）
+      pwInput.value = '';
+      pwInput.placeholder = '给这个 ID 设个密码';
+      if (!silent) setTimeout(function () { newIdInput.focus(); }, 30);
+      if (activeId) setStatus('已登录：' + activeId + '（直接选下面的游戏即可）', 'ok');
+      else setStatus('选一个已有 ID，或新建一个');
+    } else {
+      var id = sel.value;
+      pwInput.value = accounts[id] || '';
+      pwInput.placeholder = '密码';
+      if (id === activeId) setStatus('已登录：' + activeId + '（直接选下面的游戏即可）', 'ok');
+      else setStatus('点「登录」用这个 ID 进入');
+    }
+  }
+
+  function login() {
+    var id;
+    if (sel.value === '__new__') {
+      id = String(newIdInput.value || '').trim().slice(0, 10);
+    } else {
+      id = sel.value;
+    }
+    var pw = String(pwInput.value || '');
+    if (!id) { setStatus('先填一个 ID', 'err'); newIdInput.focus(); return; }
+    if (!pw) { setStatus('请输入密码', 'err'); pwInput.focus(); return; }
+
+    var existing = accounts[id];
+    if (existing && existing !== pw) {
+      setStatus('这个 ID 的密码不对', 'err');
+      pwInput.select();
+      return;
+    }
+    if (!existing) accounts[id] = pw;       // 新 ID：第一次登录即创建
+    saveAccounts();
+
+    activeId = id;
+    var room = lastRoom() || randRoom();
+    saveActive(id, pw, room);
+    sel.value = id;
+    renderAccounts();
+    sel.value = id;
+    onSelectChange(true);
+    setStatus('已登录：' + id + '（这台设备下次自动登录）', 'ok');
+    logoutBtn.style.display = 'inline';
+  }
+
+  function logout() {
+    activeId = '';
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    logoutBtn.style.display = 'none';
+    onSelectChange(true);
+    setStatus('已退出账号（本机记住的 ID 还在，选中再点登录即可）');
+  }
+
+  /* ---------------- 房间号弹窗 ---------------- */
+  function openRoomModal(page, title) {
+    pendingPage = page;
+    roomTitle.textContent = '进入「' + title + '」';
+    roomInput.value = lastRoom() || randRoom();
+    roomErr.textContent = '';
+    roomModal.classList.remove('hidden');
+    setTimeout(function () { roomInput.focus(); roomInput.select(); }, 30);
+  }
+  function closeRoomModal() {
+    roomModal.classList.add('hidden');
+    pendingPage = null;
+  }
+  function goRoom() {
+    if (!pendingPage) return;
+    var room = sanitizeRoom(roomInput.value);
+    if (!room) { roomErr.textContent = '房间号只能用小写字母 / 数字 / _ -'; roomInput.focus(); return; }
+    var o = null;
+    try { o = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+    saveActive(activeId || (o && o.name) || '', (o && o.pass) || '', room);
+
+    /* 玩家端会优先用自己上次的登录态，账号换了要把它顶掉，统一以大厅账号为准 */
+    if (pendingPage === 'player') syncPlayerSession();
+
+    var page = pendingPage + (location.protocol === 'file:' ? '.html' : '');
+    location.href = page + '#room=' + encodeURIComponent(room);
+  }
+
+  function syncPlayerSession() {
+    try {
+      var s = JSON.parse(localStorage.getItem('botc_player_session') || 'null');
+      if (s && s.username && activeId && s.username !== activeId) {
+        localStorage.removeItem('botc_player_session');
+      }
+    } catch (e) {}
+  }
+
+  /* ---------------- 事件 ---------------- */
+  sel.addEventListener('change', function () { onSelectChange(false); });
+  loginBtn.addEventListener('click', login);
+  logoutBtn.addEventListener('click', logout);
+  pwInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') login(); });
+  newIdInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') pwInput.focus(); });
+
+  document.getElementById('tiles').addEventListener('click', function (e) {
+    var tile = e.target.closest ? e.target.closest('.tile') : null;
+    if (!tile) return;
+    if (!activeId) {
+      setStatus('先在上面登录（选 ID + 密码），再点游戏', 'err');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      sel.focus();
+      return;
+    }
+    openRoomModal(tile.getAttribute('data-page'), tile.getAttribute('data-title') || '游戏');
   });
 
-  if (savedId && savedId.name) save({ name: savedId.name, pass: passFor(savedId.name), room: sanitizeRoom(roomEl.value) });
-  refresh();
+  document.getElementById('btnRoomCancel').addEventListener('click', closeRoomModal);
+  document.getElementById('btnRoomGo').addEventListener('click', goRoom);
+  roomInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') goRoom(); });
+  roomModal.addEventListener('click', function (e) { if (e.target === roomModal) closeRoomModal(); });
+
+  /* ---------------- 初始化 ---------------- */
+  loadAccounts();
+  loadActive();
+  renderAccounts();
+  if (activeId) {
+    sel.value = activeId;
+    onSelectChange(true);
+    logoutBtn.style.display = 'inline';
+    setStatus('已登录：' + activeId + '（直接选下面的游戏即可）', 'ok');
+  }
   verEl.textContent = '版本 ' + window.APP_VERSION;
 })();
 </script>
