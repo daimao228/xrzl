@@ -599,6 +599,15 @@
       claimEl.textContent = `→ ${tName} · 宣称「${cName}」`;
       centerArea.appendChild(claimEl);
 
+      const canRespond = isMyTurnToRespond(cardInPlay.targetPlayerIndex);
+      if (!canRespond) {
+        const waitEl = document.createElement('div');
+        waitEl.className = 'center-placeholder';
+        waitEl.style.fontSize = '0.82rem';
+        waitEl.textContent = `⏳ 等待 ${tName} 做出选择（相信 / 质疑 / 传给别人）`;
+        centerArea.appendChild(waitEl);
+      }
+
       const peekBtn = document.createElement('button');
       peekBtn.className = 'peek-btn';
       peekBtn.textContent = '👁 偷看';
@@ -617,9 +626,9 @@
         clearTimeout(peekTimeout);
         peekTimeout = setTimeout(() => info.remove(), 3000);
       });
-      centerArea.appendChild(peekBtn);
+      if (canRespond) centerArea.appendChild(peekBtn);
 
-      if (hasValidPassTarget()) {
+      if (canRespond && hasValidPassTarget()) {
         const passBtn = document.createElement('button');
         passBtn.className = 'pass-btn';
         passBtn.textContent = '↗ 传给别人';
@@ -639,7 +648,7 @@
       `;
       actions.querySelector('.believe-btn').addEventListener('click', () => handleAccept(true));
       actions.querySelector('.doubt-btn').addEventListener('click', () => handleAccept(false));
-      centerArea.appendChild(actions);
+      if (canRespond) centerArea.appendChild(actions);
     } else {
       const ph = document.createElement('div');
       ph.className = 'center-placeholder';
@@ -948,6 +957,12 @@
     }, 620);
     if (navigator.vibrate) { try { navigator.vibrate(60); } catch (e) {} }
   }
+  /* 只有被传牌的人（本机身份）才能操作；没有大厅身份时视为热座模式，谁都能操作 */
+  function isMyTurnToRespond(idx) {
+    if (!MY_NAME) return true;
+    return Number(idx) === Number(MY_SEAT);
+  }
+
   /* 拍桌广播：让同一个房间的人一起震 */
   let slamChannel = null;
   function initSlamNet() {
@@ -1082,6 +1097,7 @@
 </script>
 </body>
 </html>
+
 
 
 
