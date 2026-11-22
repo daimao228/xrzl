@@ -433,6 +433,12 @@
   ];
   let playerCount = 4;   // 4 ~ 8，可调
   const YOU_BADGE = '<span class="seat-you-badge">你</span>';
+  const CLAIM_CROWN = -1;
+  function claimName(idx) {
+    if (Number(idx) === CLAIM_CROWN) return '皇冠👑';
+    const b = BUG_TYPES[idx];
+    return b ? b.name : '?';
+  }
 
   /* 从游戏大厅带过来的身份 */
   const LOBBY_ID = (() => {
@@ -596,7 +602,7 @@
       const claimEl = document.createElement('div');
       claimEl.className = 'center-claim';
       const tName = players[cardInPlay.targetPlayerIndex]?.name || '?';
-      const cName = BUG_TYPES[cardInPlay.claimedTypeIndex]?.name || '?';
+      const cName = claimName(cardInPlay.claimedTypeIndex);
       claimEl.textContent = `→ ${tName} · 宣称「${cName}」`;
       centerArea.appendChild(claimEl);
 
@@ -868,6 +874,15 @@
       });
       grid.appendChild(btn);
     });
+    /* 额外选项：声明这是一张皇冠牌 */
+    const crownBtn = document.createElement('button');
+    crownBtn.className = 'bug-option crown-option';
+    crownBtn.innerHTML = '<span style="font-size:1.5rem;">👑</span><span class="bug-label">这是皇冠</span>';
+    crownBtn.addEventListener('click', () => {
+      overlay.remove();
+      onSelect(CLAIM_CROWN);
+    });
+    grid.appendChild(crownBtn);
     modal.querySelector('.cancel-btn').addEventListener('click', () => {
       overlay.remove();
       renderAll();
@@ -1030,7 +1045,9 @@
 
     const actualType = cardInPlay.typeIndex;
     const claimedType = cardInPlay.claimedTypeIndex;
-    const isTruth = actualType === claimedType;
+    const isTruth = (Number(claimedType) === CLAIM_CROWN)
+      ? !!cardInPlay.isCrown
+      : (actualType === claimedType);
     const isCorrect = believe === isTruth;
 
     let receiverId;
@@ -1110,6 +1127,7 @@
 </script>
 </body>
 </html>
+
 
 
 
