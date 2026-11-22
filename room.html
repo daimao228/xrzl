@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -38,6 +38,7 @@
     <span>我 <b id="meLabel">—</b></span>
     <span>在线 <b id="onlineLabel">0</b></span>
     <span>连接 <b id="connLabel">—</b></span>
+    <button id="btnRename" style="padding:2px 10px;border-radius:12px;cursor:pointer;font-family:inherit;font-size:12px;">✏️ 改名</button>
   </div>
 
   <div class="seats" id="seats"></div>
@@ -61,6 +62,7 @@ window.APP_VERSION = 'room-test-1';
     if (l && l.name) meName = l.name;
   } catch (e) {}
   if (!meName) meName = '玩家' + meId.slice(-4);
+  meName = sessionStorage.getItem('room_test_name') || meName;
 
   const room = (function () {
     const h = String(location.hash || '').replace(/^#/, '');
@@ -149,6 +151,22 @@ window.APP_VERSION = 'room-test-1';
     log('openChannel 失败：' + e.message);
   }
 
+  document.getElementById('btnRename').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const v = prompt('你的名字（只影响这个标签页/这台设备）：', meName);
+    if (v === null) return;
+    const t = String(v).trim().slice(0, 10);
+    if (!t) return;
+    meName = t;
+    sessionStorage.setItem('room_test_name', t);
+    document.getElementById('meLabel').textContent = meName;
+    const me = peers.get(meId);
+    if (me) { me.name = meName; me.ts = Date.now(); }
+    beacon();
+    render();
+    log('改名为 ' + meName);
+  });
+
   beacon();
   setInterval(beacon, 4000);
   setInterval(render, 4000);
@@ -158,3 +176,4 @@ window.APP_VERSION = 'room-test-1';
 </script>
 </body>
 </html>
+
