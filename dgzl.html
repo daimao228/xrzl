@@ -458,6 +458,7 @@
   let netChannel = null;
   let netApplying = false;
   let hostTimer = null;
+  const pendingNames = {};
   const NET_ID = 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 
   function netSend(type, payload) {
@@ -524,15 +525,24 @@
       }
       if (msg.type === 'dg_hello') {
         if (netRole !== 'host' || p.id === NET_ID) return;
-        let idx = players.findIndex(x => x.netId === p.id);
-        if (idx < 0) {
-          /* 找一个还没被别的设备占用的座位（房主自己那桌不算） */
-          idx = players.findIndex((x, i) => i !== MY_SEAT && !x.netId);
-          if (idx < 0) { netSend('dg_seat', { id: p.id, seat: -1 }); return; }
-          players[idx].netId = p.id;
-          players[idx].name = p.name || players[idx].name;
+        pendingNames[p.id] = p.name || '玩家';
+        const idx = players.findIndex(x => x.netId === p.id);
+        netSend('dg_seat', { id: p.id, seat: idx });   // -1 = 还没选座
+        netBroadcast();
+        return;
+      }
+      if (msg.type === 'dg_claim') {
+        if (netRole !== 'host' || p.id === NET_ID) return;
+        let seat = Number(p.seat);
+        if (!(seat >= 0)) {
+          seat = players.findIndex((x, i) => i !== MY_SEAT && !x.netId);
         }
-        netSend('dg_seat', { id: p.id, seat: idx });
+        if (!(seat >= 0) || seat >= players.length) return;
+        if (players[seat].netId && players[seat].netId !== p.id) return;   // 已有人
+        players.forEach(x => { if (x.netId === p.id) x.netId = null; });
+        players[seat].netId = p.id;
+        players[seat].name = pendingNames[p.id] || p.name || players[seat].name;
+        netSend('dg_seat', { id: p.id, seat: seat });
         netBroadcast();
         return;
       }
@@ -700,10 +710,16 @@
       });
 
       seat.innerHTML = `
-        <div class="seat-name">${p.name}${idx === MY_SEAT && MY_NAME ? YOU_BADGE : ''}</div>
-        <div class="seat-hand-count">手牌 ${p.hand.length}</div>
+        <div class="seat-name">${(netRole !== 'solo' && !p.netId) ? '空位（点击入座）' : p.name}${idx === MY_SEAT && MY_NAME ? YOU_BADGE : ''}</div>
+        ${(netRole !== 'solo' && !p.netId) ? '' : `<div class="seat-hand-count">手牌 ${p.hand.length}</div>`}
         <div class="seat-face-up">${badges || '<span style="color:#6a8a6a;font-size:0.6rem;">—</span>'}</div>
       `;
+      if (netRole === 'client' && !p.netId) {
+        seat.style.cursor = 'pointer';
+        seat.addEventListener('click', () => {
+          netSend('dg_claim', { id: NET_ID, seat: idx });
+        });
+      }
       tableArea.appendChild(seat);
     });
   }
@@ -824,6 +840,12 @@
       return;
     }
 
+    if (netRole === 'client' && MY_SEAT < 0) {
+      handBar.innerHTML = '<div class="hand-bar-hint">请点牌桌上的「空位」入座，或点下面的按钮自动入座<br><button id="autoSeatBtn" style="margin-top:8px;padding:8px 16px;border-radius:20px;font-family:inherit;cursor:pointer;">⚡ 自动入座</button></div>';
+      const ab = document.getElementById('autoSeatBtn');
+      if (ab) ab.addEventListener('click', (e) => { e.stopPropagation(); netSend('dg_claim', { id: NET_ID, seat: -1 }); });
+      return;
+    }
     const viewIdx = (netRole === 'client') ? MY_SEAT : currentPlayerIndex;
     const cp = players[viewIdx];
     if (!cp || cp.hand.length === 0) {
@@ -1060,6 +1082,12 @@
   // ========== 游戏动作 ==========
   function executePlayCard(cardIndex, targetId, claimedType) {
     if (netRole === 'client') { netSend('dg_action', { kind: 'play', seat: MY_SEAT, cardIndex: cardIndex, targetId: targetId, claimedType: claimedType }); return; }
+    if (netRole === 'client' && MY_SEAT < 0) {
+      handBar.innerHTML = '<div class="hand-bar-hint">请点牌桌上的「空位」入座，或点下面的按钮自动入座<br><button id="autoSeatBtn" style="margin-top:8px;padding:8px 16px;border-radius:20px;font-family:inherit;cursor:pointer;">⚡ 自动入座</button></div>';
+      const ab = document.getElementById('autoSeatBtn');
+      if (ab) ab.addEventListener('click', (e) => { e.stopPropagation(); netSend('dg_claim', { id: NET_ID, seat: -1 }); });
+      return;
+    }
     const viewIdx = (netRole === 'client') ? MY_SEAT : currentPlayerIndex;
     const cp = players[viewIdx];
     const card = cp.hand[cardIndex];
@@ -1249,6 +1277,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
